@@ -4,17 +4,17 @@ import {
   DollarSign, Home, MapPin, MessageCircle, Phone,
   Plus, User, UserPlus, Users, X, ShoppingCart, 
   Trash2, HandCoins, Search, Edit3, Save, ArrowLeft,
-  Calendar, Clock, AlertTriangle
+  Calendar, Clock
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────
-   1. UTILITÁRIOS, FORMATAÇÃO E DATAS
+   1. UTILITÁRIOS E FORMATAÇÃO
 ───────────────────────────────────────────────── */
 const fmtMoeda = (v: number) => 
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 const fmtDataBr = (isoDate: string) => {
-  if (!isoDate) return "";
+  if (!isoDate) return "---";
   const [ano, mes, dia] = isoDate.split("-");
   return `${dia}/${mes}/${ano}`;
 };
@@ -35,23 +35,21 @@ const maskMoeda = (v: string) => {
   });
 };
 
-// Função para calcular o status do prazo (atrasado, hoje ou futuro)
 const calcularStatusPrazo = (vencimento: string) => {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const dataVenc = new Date(vencimento);
   dataVenc.setHours(0, 0, 0, 0);
-
   const diffTime = dataVenc.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, color: "text-red-600 bg-red-50", icon: AlertTriangle };
+  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, color: "text-red-600 bg-red-50", icon: AlertCircle };
   if (diffDays === 0) return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock };
   return { label: `Vence em ${diffDays}d`, color: "text-blue-600 bg-blue-50", icon: Calendar };
 };
 
 /* ─────────────────────────────────────────────────
-   2. COMPONENTES DE INTERFACE (UI)
+   2. COMPONENTES DE UI (FORA PARA NÃO BUGAR TECLADO)
 ───────────────────────────────────────────────── */
 const CampoForm = ({ label, icon: Icon, children }: any) => (
   <div className="flex flex-col gap-1.5 w-full">
@@ -63,58 +61,125 @@ const CampoForm = ({ label, icon: Icon, children }: any) => (
 );
 
 /* ─────────────────────────────────────────────────
-   3. MODAL BASE
+   3. MODAIS (CADASTRO E MOVIMENTAÇÃO)
 ───────────────────────────────────────────────── */
-function ModalBase({ titulo, fechar, children }: any) {
+function ModalMovimentacao({ cliente, tipo, onConfirmar, onFechar }: any) {
+  const isPagamento = tipo === 'pagamento';
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 flex flex-col" onClick={fechar}>
-      <div 
-        className="mt-auto bg-gray-50 rounded-t-[32px] p-6 pb-10 flex flex-col gap-6 shadow-2xl overflow-y-auto max-h-[95vh]"
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[100] bg-black/70 flex flex-col justify-end" onClick={onFechar}>
+      <div className="bg-white rounded-t-[32px] p-8 flex flex-col gap-6 animate-in slide-in-from-bottom" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-black text-gray-800 tracking-tighter">{titulo}</h2>
-          <button onClick={fechar} className="p-2 bg-gray-200 rounded-full text-gray-500"><X /></button>
+          <h2 className="text-2xl font-black">{isPagamento ? "Receber Pagamento" : "Lançar Compra"}</h2>
+          <button onClick={onFechar} className="p-2 bg-gray-100 rounded-full"><X/></button>
         </div>
-        {children}
+        <p className="font-bold text-gray-400 uppercase text-xs">Cliente: {cliente.nome}</p>
+        <input autoFocus type="text" inputMode="numeric" className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl p-6 text-4xl font-black text-center outline-none" placeholder="0,00" onChange={e => e.target.value = maskMoeda(e.target.value)} />
+        <button 
+          onClick={(e) => {
+            const val = parseFloat((e.currentTarget.parentElement?.querySelector('input') as any).value.replace(/\./g, "").replace(",", ".")) || 0;
+            onConfirmar(val);
+          }}
+          className={`w-full py-5 rounded-2xl font-black text-xl text-white shadow-lg ${isPagamento ? 'bg-green-600' : 'bg-blue-700'}`}
+        >
+          Confirmar {isPagamento ? "Pagamento" : "Venda"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
+  const hoje = new Date().toISOString().split("T")[0];
+  const [nome, setNome] = useState(inicial?.nome || "");
+  const [end, setEnd] = useState(inicial?.endereco || "");
+  const [tel, setTel] = useState(inicial?.telefone || "");
+  const [lim, setLim] = useState(inicial?.limite ? (inicial.limite).toLocaleString('pt-BR', {minimumFractionDigits: 2}) : "");
+  const [dtCompra, setDtCompra] = useState(inicial?.dataCompra || hoje);
+  const [dtVenc, setDtVenc] = useState(inicial?.vencimento || hoje);
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/70 flex flex-col justify-end" onClick={aoFechar}>
+      <div className="bg-white rounded-t-[32px] p-6 flex flex-col gap-5 max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-2xl font-bold">{inicial?.id ? "Editar Cliente" : "Cadastrar Novo Cliente"}</h2>
+          <button onClick={aoFechar} className="p-2 bg-gray-100 rounded-full text-gray-400"><X /></button>
+        </div>
+        <CampoForm label="Nome Completo" icon={User}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Maria da Silva" /></CampoForm>
+        <CampoForm label="Endereço" icon={MapPin}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} placeholder="Ex: Rua das Flores, 123" /></CampoForm>
+        <div className="grid grid-cols-2 gap-3">
+          <CampoForm label="Data Compra" icon={Calendar}><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtCompra} onChange={e => setDtCompra(e.target.value)} /></CampoForm>
+          <CampoForm label="Data Vencimento" icon={Clock}><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtVenc} onChange={e => setDtVenc(e.target.value)} /></CampoForm>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <CampoForm label="Telefone WhatsApp" icon={Phone}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" /></CampoForm>
+          <CampoForm label="Limite" icon={DollarSign}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" /></CampoForm>
+        </div>
+        <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="w-full bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg mt-2">Salvar Cliente</button>
       </div>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────
-   4. TELA: INÍCIO (DASHBOARD)
+   4. TELAS (ESTILO LAYOUT 19:15)
 ───────────────────────────────────────────────── */
-function TelaDashboard({ clientes, setTela, abrirCadastro }: any) {
+function TelaInicio({ clientes, setTela, abrirCad }: any) {
   const total = useMemo(() => clientes.reduce((acc: any, c: any) => acc + c.saldo, 0), [clientes]);
-  const atrasados = clientes.filter((c: any) => {
+  const emAtraso = clientes.filter((c: any) => {
     if (c.saldo <= 0) return false;
-    const diff = new Date(c.vencimento).getTime() - new Date().setHours(0,0,0,0);
-    return diff < 0;
-  }).length;
+    return new Date(c.vencimento).getTime() < new Date().setHours(0,0,0,0);
+  });
+  const totalAtrasado = emAtraso.reduce((acc: any, c: any) => acc + c.saldo, 0);
 
   return (
-    <div className="p-5 flex flex-col gap-6">
-      <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col items-center gap-2 relative overflow-hidden">
-        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Total a Receber</p>
+    <div className="p-4 flex flex-col gap-6 animate-in fade-in">
+      {/* Card Principal de Saldo */}
+      <div className="bg-white rounded-3xl shadow-sm p-8 flex flex-col items-center gap-2 border border-gray-100">
+        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total a Receber</p>
         <p className="text-5xl font-black text-red-600">{fmtMoeda(total)}</p>
-        {atrasados > 0 && (
-          <div className="bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-black flex items-center gap-2 mt-3 animate-pulse">
-            <AlertTriangle size={14}/> {atrasados} PRAZOS VENCIDOS
-          </div>
-        )}
+        <div className="bg-red-50 text-red-600 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 mt-2">
+          <AlertCircle size={14}/> {fmtMoeda(totalAtrasado)} em atraso
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        <button onClick={abrirCadastro} className="bg-green-600 text-white p-5 rounded-2xl font-black flex items-center gap-4 shadow-lg active:scale-95 transition-all">
+      {/* Grid de Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-sm border border-gray-50">
+          <Users size={24} className="text-blue-600" />
+          <p className="text-xl font-bold">{clientes.length}</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase">Clientes</p>
+        </div>
+        <div className="bg-red-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-red-100">
+          <AlertCircle size={24} className="text-red-600" />
+          <p className="text-xl font-bold text-red-600">{emAtraso.length}</p>
+          <p className="text-[10px] text-red-400 font-bold uppercase">Em Atraso</p>
+        </div>
+        <div className="bg-green-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-green-100">
+          <CheckCircle size={24} className="text-green-600" />
+          <p className="text-xl font-bold text-green-600">{clientes.length - emAtraso.length}</p>
+          <p className="text-[10px] text-green-600 font-bold uppercase">Em Dia</p>
+        </div>
+      </div>
+
+      {/* Atalhos */}
+      <div className="flex flex-col gap-4 mt-2">
+        <p className="text-lg font-bold text-gray-800">O que você quer fazer?</p>
+
+        <button onClick={abrirCad} className="bg-green-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
           <div className="bg-white/20 p-2 rounded-xl"><UserPlus size={24}/></div>
           <p className="text-lg">Cadastrar Novo Cliente</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
 
-        <button onClick={() => setTela("clientes")} className="bg-blue-700 text-white p-5 rounded-2xl font-black flex items-center gap-4 shadow-lg active:scale-95 transition-all">
+        <button onClick={() => setTela("clientes")} className="bg-blue-700 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
           <div className="bg-white/20 p-2 rounded-xl"><Users size={24}/></div>
-          <p className="text-lg">Gerenciar Clientes</p>
+          <p className="text-lg">Ver Clientes</p>
+          <ChevronRight className="ml-auto opacity-50" />
+        </button>
+
+        <button onClick={() => setTela("cobrancas")} className="bg-orange-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
+          <div className="bg-white/20 p-2 rounded-xl"><Bell size={24}/></div>
+          <p className="text-lg">Fazer Cobrança</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
       </div>
@@ -122,69 +187,43 @@ function TelaDashboard({ clientes, setTela, abrirCadastro }: any) {
   );
 }
 
-/* ─────────────────────────────────────────────────
-   5. TELA: LISTA DE CLIENTES
-───────────────────────────────────────────────── */
-function TelaLista({ clientes, onLancar, onApagar, onEditar, abrirCadastro }: any) {
+function TelaClientes({ clientes, onLancar, onApagar, onEditar, abrirCad }: any) {
   const [busca, setBusca] = useState("");
   const filtrados = clientes.filter((c: any) => c.nome.toLowerCase().includes(busca.toLowerCase()));
 
   return (
-    <div className="p-5 flex flex-col gap-4">
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20}/>
-        <input 
-          className="w-full bg-white border-2 border-gray-100 rounded-2xl pl-12 pr-4 py-4 font-bold shadow-sm focus:border-blue-500 outline-none"
-          placeholder="Pesquisar cliente..."
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-        />
+    <div className="p-4 flex flex-col gap-4">
+      <div className="relative mb-2">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
+        <input className="w-full bg-white border-2 border-gray-100 rounded-2xl pl-12 pr-4 py-4 font-bold outline-none" placeholder="Buscar cliente..." value={busca} onChange={e => setBusca(e.target.value)} />
       </div>
 
-      {filtrados.map((c: any) => {
-        const pct = (c.saldo / c.limite) * 100;
-        const status = calcularStatusPrazo(c.vencimento);
-        const StatusIcon = status.icon;
+      <button onClick={abrirCad} className="bg-blue-700 text-white p-4 rounded-xl font-bold flex justify-center gap-2 shadow-md"><Plus /> Novo Cadastro</button>
 
+      {filtrados.map((c: any) => {
+        const prazo = calcularStatusPrazo(c.vencimento);
+        const IconP = prazo.icon;
         return (
-          <div key={c.id} className="bg-white rounded-[28px] p-5 shadow-sm border border-gray-100 flex flex-col gap-4">
+          <div key={c.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
             <div className="flex justify-between items-start">
               <div onClick={() => onEditar(c)}>
                 <p className="text-xl font-black text-gray-800">{c.nome}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${status.color}`}>
-                    <StatusIcon size={12}/> {status.label}
+                  <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${prazo.color}`}>
+                    <IconP size={12}/> {prazo.label}
                   </span>
                 </div>
               </div>
-              <div className="text-right">
-                 <button onClick={() => onApagar(c)} className="text-gray-200 mb-1"><Trash2 size={18}/></button>
+              <div className="flex flex-col items-end">
+                 <button onClick={() => onApagar(c)} className="text-gray-200 mb-2 p-1"><Trash2 size={18}/></button>
                  <p className="text-2xl font-black text-red-600 leading-none">{fmtMoeda(c.saldo)}</p>
+                 <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Limite: {fmtMoeda(c.limite)}</p>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-[10px] font-black text-gray-400 uppercase">
-              <div className="flex flex-col">
-                <span>Data Compra</span>
-                <span className="text-gray-600">{fmtDataBr(c.dataCompra)}</span>
-              </div>
-              <div className="flex flex-col text-right">
-                <span>Vencimento</span>
-                <span className="text-gray-600">{fmtDataBr(c.vencimento)}</span>
-              </div>
-            </div>
-
-            <div className="h-2 bg-gray-50 rounded-full overflow-hidden border">
-              <div className={`h-full ${pct > 90 ? 'bg-red-600' : 'bg-blue-600'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2">
-                <Plus size={14}/> Venda
-              </button>
-              <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2">
-                <HandCoins size={14}/> Pagou
-              </button>
+              <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2">Venda (+)</button>
+              <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2">Pagou ($)</button>
             </div>
           </div>
         );
@@ -194,23 +233,22 @@ function TelaLista({ clientes, onLancar, onApagar, onEditar, abrirCadastro }: an
 }
 
 /* ─────────────────────────────────────────────────
-   6. APP PRINCIPAL
+   5. APP PRINCIPAL (FIADOCONTROL)
 ───────────────────────────────────────────────── */
 export default function App() {
   const [tela, setTela] = useState("inicio");
   const [clientes, setClientes] = useState<any[]>(() => {
-    const salvo = localStorage.getItem("fiado_v3");
+    const salvo = localStorage.getItem("fiadocontrol_vFinal_Layout2");
     return salvo ? JSON.parse(salvo) : [];
   });
-
   const [modalCad, setModalCad] = useState<any>(null);
   const [mov, setMov] = useState<any>(null);
 
   useEffect(() => {
-    localStorage.setItem("fiado_v3", JSON.stringify(clientes));
+    localStorage.setItem("fiadocontrol_vFinal_Layout2", JSON.stringify(clientes));
   }, [clientes]);
 
-  const salvarCliente = (dados: any) => {
+  const handleSalvar = (dados: any) => {
     if (modalCad?.id) {
       setClientes(clientes.map(c => c.id === modalCad.id ? { ...c, ...dados } : c));
     } else {
@@ -219,123 +257,50 @@ export default function App() {
     setModalCad(null);
   };
 
+  const handleMov = (valor: number) => {
+    const f = mov.t === 'compra' ? 1 : -1;
+    setClientes(clientes.map(c => c.id === mov.c.id ? { ...c, saldo: Math.max(0, c.saldo + (valor * f)) } : c));
+    setMov(null);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-24 font-sans">
-      <header className="bg-blue-700 text-white p-6 pt-14 pb-8 flex flex-col gap-1 shadow-xl">
-        <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-black tracking-tighter">FiadoControl</h1>
-          {tela !== "inicio" && <button onClick={() => setTela("inicio")} className="p-2 bg-white/10 rounded-xl"><ArrowLeft/></button>}
-        </div>
-        <p className="text-blue-200 font-bold text-xs uppercase">Controle de Crédito</p>
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-24 font-sans text-gray-900">
+      {/* Header com estilo layout 2 */}
+      <header className="bg-blue-700 text-white p-6 pt-12 pb-8 shadow-xl">
+        <h1 className="text-4xl font-black tracking-tighter">FiadoControl</h1>
+        <p className="text-blue-200 font-bold text-xs uppercase tracking-widest mt-1">Controle de Crédito</p>
       </header>
 
-      <main className="flex-1">
-        {tela === "inicio" && <TelaDashboard clientes={clientes} setTela={setTela} abrirCadastro={() => setModalCad({})} />}
-        {tela === "clientes" && <TelaLista clientes={clientes} abrirCadastro={() => setModalCad({})} onLancar={(c: any, t: any) => setMov({c, t})} onApagar={(c: any) => confirm(`Remover ${c.nome}?`) && setClientes(clientes.filter(x => x.id !== c.id))} onEditar={setModalCad} />}
+      <main className="flex-1 overflow-y-auto">
+        {tela === "inicio" && <TelaInicio clientes={clientes} setTela={setTela} abrirCad={() => setModalCad({})} />}
+        {tela === "clientes" && <TelaClientes clientes={clientes} abrirCad={() => setModalCad({})} onLancar={(c:any, t:any) => setMov({c, t})} onApagar={(c:any) => confirm(`Apagar ${c.nome}?`) && setClientes(clientes.filter(x => x.id !== c.id))} onEditar={setModalCad} />}
+        {tela === "cobrancas" && (
+          <div className="p-4 flex flex-col gap-4">
+             <p className="text-xl font-black text-orange-600 mb-2">Cobranças Ativas</p>
+             {clientes.filter(c => c.saldo > 0).map(c => (
+               <div key={c.id} className="bg-white p-6 rounded-[32px] border-l-8 border-orange-500 shadow-sm flex flex-col gap-4">
+                  <div className="flex justify-between items-center font-black">
+                    <p className="text-xl">{c.nome}</p>
+                    <p className="text-2xl text-red-600">{fmtMoeda(c.saldo)}</p>
+                  </div>
+                  <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${c.nome}, lembrete do saldo de ${fmtMoeda(c.saldo)} que venceu em ${fmtDataBr(c.vencimento)}.`)}`} target="_blank" className="bg-green-600 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2">
+                    <MessageCircle size={20}/> Cobrar WhatsApp
+                  </a>
+               </div>
+             ))}
+          </div>
+        )}
       </main>
 
-      <nav className="fixed bottom-6 left-6 right-6 bg-white border border-gray-100 h-18 rounded-[24px] flex shadow-2xl z-50 items-center overflow-hidden">
-        <button onClick={() => setTela("inicio")} className={`flex-1 flex flex-col items-center p-4 ${tela === "inicio" ? "text-blue-700" : "text-gray-300"}`}><Home /></button>
-        <button onClick={() => setTela("clientes")} className={`flex-1 flex flex-col items-center p-4 ${tela === "clientes" ? "text-blue-700" : "text-gray-300"}`}><Users /></button>
+      {/* Nav Inferior */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex h-20 shadow-2xl z-50 items-center px-4">
+        <button onClick={() => setTela("inicio")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "inicio" ? "text-blue-700" : "text-gray-300"}`}><Home size={28}/><span className="text-[10px] font-bold">Início</span></button>
+        <button onClick={() => setTela("clientes")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "clientes" ? "text-blue-700" : "text-gray-300"}`}><Users size={28}/><span className="text-[10px] font-bold">Clientes</span></button>
+        <button onClick={() => setTela("cobrancas")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "cobrancas" ? "text-blue-700" : "text-gray-300"}`}><Bell size={28}/><span className="text-[10px] font-bold">Cobrar</span></button>
       </nav>
 
-      {modalCad && (
-        <ModalBase titulo={modalCad.id ? "Editar Cliente" : "Novo Cadastro"} fechar={() => setModalCad(null)}>
-          <FormCadastro inicial={modalCad} aoSalvar={salvarCliente} />
-        </ModalBase>
-      )}
-
-      {mov && (
-        <ModalBase titulo={mov.t === 'compra' ? "Nova Venda" : "Receber Pagamento"} fechar={() => setMov(null)}>
-           <div className="flex flex-col gap-6">
-              <p className="text-center font-bold text-gray-400">Cliente: {mov.c.nome}</p>
-              <input 
-                autoFocus 
-                type="text" 
-                inputMode="numeric"
-                placeholder="R$ 0,00"
-                className="text-5xl font-black text-center w-full text-blue-700 outline-none"
-                onChange={e => e.target.value = maskMoeda(e.target.value)}
-              />
-              <button 
-                onClick={() => {
-                  const input = document.querySelector('input[inputMode="numeric"]') as HTMLInputElement;
-                  const val = parseFloat(input.value.replace(/\./g, "").replace(",", ".")) || 0;
-                  const fator = mov.t === 'compra' ? 1 : -1;
-                  setClientes(clientes.map(c => c.id === mov.c.id ? { ...c, saldo: Math.max(0, c.saldo + (val * fator)) } : c));
-                  setMov(null);
-                }}
-                className={`w-full py-5 rounded-2xl font-black text-xl text-white shadow-lg ${mov.t === 'compra' ? 'bg-blue-600' : 'bg-green-600'}`}
-              >
-                Confirmar Operação
-              </button>
-           </div>
-        </ModalBase>
-      )}
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────────
-   7. FORMULÁRIO DE CADASTRO COM CALENDÁRIO
-───────────────────────────────────────────────── */
-function FormCadastro({ inicial, aoSalvar }: any) {
-  const dataHoje = new Date().toISOString().split("T")[0];
-  const [nome, setNome] = useState(inicial.nome || "");
-  const [tel, setTel] = useState(inicial.telefone || "");
-  const [lim, setLim] = useState(inicial.limite ? maskMoeda(inicial.limite.toString()) : "");
-
-  // CAMPOS DE DATA (Adicionados como você pediu)
-  const [dataCompra, setDataCompra] = useState(inicial.dataCompra || dataHoje);
-  const [vencimento, setVencimento] = useState(inicial.vencimento || dataHoje);
-
-  return (
-    <div className="flex flex-col gap-5">
-      <CampoForm label="Nome Completo" icon={User}>
-        <input className="bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none focus:border-blue-500" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Maria Silva" />
-      </CampoForm>
-
-      {/* SEÇÃO DE DATAS: COMPRA E VENCIMENTO */}
-      <div className="grid grid-cols-2 gap-3">
-        <CampoForm label="Data da Compra" icon={Calendar}>
-          <input 
-            type="date" 
-            className="bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" 
-            value={dataCompra} 
-            onChange={e => setDataCompra(e.target.value)} 
-          />
-        </CampoForm>
-        <CampoForm label="Data para Pagar" icon={Clock}>
-          <input 
-            type="date" 
-            className="bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" 
-            value={vencimento} 
-            onChange={e => setVencimento(e.target.value)} 
-          />
-        </CampoForm>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <CampoForm label="WhatsApp" icon={Phone}>
-          <input className="bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" type="tel" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" />
-        </CampoForm>
-        <CampoForm label="Limite" icon={DollarSign}>
-          <input className="bg-white border-2 border-gray-100 rounded-2xl p-4 font-bold outline-none" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" />
-        </CampoForm>
-      </div>
-
-      <button 
-        onClick={() => aoSalvar({ 
-          nome, 
-          telefone: tel, 
-          limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0,
-          dataCompra,
-          vencimento
-        })}
-        className="bg-blue-700 text-white py-5 rounded-2xl font-black text-xl shadow-xl mt-4 flex items-center justify-center gap-2 active:scale-95 transition-all"
-      >
-        <Save size={24}/> {inicial.id ? "Salvar Alterações" : "Concluir Cadastro"}
-      </button>
+      {modalCad && <ModalCadastro inicial={modalCad} aoSalvar={handleSalvar} aoFechar={() => setModalCad(null)} />}
+      {mov && <ModalTransacao cliente={mov.c} tipo={mov.t} onConfirmar={handleMov} onFechar={() => setMov(null)} />}
     </div>
   );
 }
