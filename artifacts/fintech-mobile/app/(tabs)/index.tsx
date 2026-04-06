@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,180 +10,193 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Header } from "@/components/Header";
 import { clientes, resumoFinanceiro } from "@/data/mockData";
 import { useColors } from "@/hooks/useColors";
 import { formatarMoeda } from "@/lib/utils";
-
-function SummaryCard({
-  label,
-  value,
-  icon,
-  iconBg,
-  iconColor,
-}: {
-  label: string;
-  value: string;
-  icon: React.ComponentProps<typeof Feather>["name"];
-  iconBg: string;
-  iconColor: string;
-}) {
-  const colors = useColors();
-  return (
-    <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={[styles.summaryIcon, { backgroundColor: iconBg }]}>
-        <Feather name={icon} size={20} color={iconColor} />
-      </View>
-      <Text style={[styles.summaryValue, { color: colors.foreground }]}>{value}</Text>
-      <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>{label}</Text>
-    </View>
-  );
-}
-
-function ShortcutButton({
-  label,
-  icon,
-  onPress,
-  color,
-}: {
-  label: string;
-  icon: React.ComponentProps<typeof Feather>["name"];
-  onPress: () => void;
-  color: string;
-}) {
-  const colors = useColors();
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.shortcut,
-        { backgroundColor: colors.card, borderColor: colors.border, opacity: pressed ? 0.75 : 1 },
-      ]}
-      onPress={onPress}
-    >
-      <View style={[styles.shortcutIcon, { backgroundColor: color + "20" }]}>
-        <Feather name={icon} size={22} color={color} />
-      </View>
-      <Text style={[styles.shortcutLabel, { color: colors.foreground }]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isWeb = Platform.OS === "web";
+  const topPad = isWeb ? 67 : insets.top + 16;
 
   const emAtraso = clientes.filter((c) => c.diasAtraso > 0);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title="Gestão Financeira" subtitle="Visão geral da sua carteira" />
+      {/* HEADER */}
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: colors.primary, paddingTop: topPad },
+        ]}
+      >
+        <Text style={styles.appName}>FiadoControl</Text>
+        <Text style={styles.appSub}>Controle de crédito e cobranças</Text>
+      </View>
+
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: insets.bottom + 100 },
+          { paddingBottom: isWeb ? 120 : insets.bottom + 110 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.heroCard, { backgroundColor: colors.navBackground }]}>
-          <Text style={styles.heroLabel}>Total a Receber</Text>
-          <Text style={styles.heroValue}>
+        {/* CARD TOTAL */}
+        <View style={[styles.totalCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>
+            TOTAL A RECEBER
+          </Text>
+          <Text style={[styles.totalValue, { color: colors.danger }]}>
             {formatarMoeda(resumoFinanceiro.totalAReceber)}
           </Text>
-          <View style={styles.heroRow}>
-            <View style={styles.heroBadge}>
-              <Feather name="alert-circle" size={12} color="#fbbf24" />
-              <Text style={styles.heroBadgeText}>
-                {formatarMoeda(resumoFinanceiro.totalEmAtraso)} em atraso
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.summaryRow}>
-          <SummaryCard
-            label="Clientes"
-            value={String(resumoFinanceiro.clientesAtivos)}
-            icon="users"
-            iconBg={colors.secondary}
-            iconColor={colors.primary}
-          />
-          <SummaryCard
-            label="Em Atraso"
-            value={String(resumoFinanceiro.clientesEmAtraso)}
-            icon="alert-triangle"
-            iconBg={colors.warningLight}
-            iconColor={colors.warning}
-          />
-          <SummaryCard
-            label="Em Dia"
-            value={String(
-              resumoFinanceiro.clientesAtivos - resumoFinanceiro.clientesEmAtraso
-            )}
-            icon="check-circle"
-            iconBg={colors.successLight}
-            iconColor={colors.success}
-          />
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          Atalhos Rápidos
-        </Text>
-        <View style={styles.shortcuts}>
-          <ShortcutButton
-            label="Clientes"
-            icon="users"
-            color={colors.primary}
-            onPress={() => router.push("/(tabs)/clientes")}
-          />
-          <ShortcutButton
-            label="Cobranças"
-            icon="bell"
-            color={colors.warning}
-            onPress={() => router.push("/(tabs)/cobrancas")}
-          />
-          <ShortcutButton
-            label="Relatório"
-            icon="bar-chart-2"
-            color={colors.success}
-            onPress={() => {}}
-          />
-          <ShortcutButton
-            label="Novo Cliente"
-            icon="user-plus"
-            color="#8b5cf6"
-            onPress={() => {}}
-          />
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          Clientes em Atraso
-        </Text>
-        {emAtraso.map((cliente) => (
           <View
-            key={cliente.id}
-            style={[styles.alertCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[
+              styles.totalBadge,
+              { backgroundColor: colors.dangerLight },
+            ]}
           >
-            <View style={styles.alertLeft}>
-              <View style={[styles.avatar, { backgroundColor: colors.warningLight }]}>
-                <Text style={[styles.avatarText, { color: colors.warning }]}>
-                  {cliente.nome.charAt(0)}
-                </Text>
-              </View>
-              <View>
-                <Text style={[styles.alertName, { color: colors.foreground }]}>
-                  {cliente.nome}
-                </Text>
-                <Text style={[styles.alertDays, { color: colors.warning }]}>
-                  {cliente.diasAtraso} dias em atraso
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.alertValue, { color: colors.destructive }]}>
-              {formatarMoeda(cliente.saldoDevedor)}
+            <Feather name="alert-circle" size={16} color={colors.danger} />
+            <Text style={[styles.totalBadgeText, { color: colors.danger }]}>
+              {formatarMoeda(resumoFinanceiro.totalEmAtraso)} em atraso
             </Text>
           </View>
-        ))}
+        </View>
+
+        {/* RESUMO */}
+        <View style={styles.resumoRow}>
+          <View
+            style={[
+              styles.resumoCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Feather name="users" size={28} color={colors.primary} />
+            <Text style={[styles.resumoNum, { color: colors.foreground }]}>
+              {resumoFinanceiro.clientesAtivos}
+            </Text>
+            <Text style={[styles.resumoLabel, { color: colors.mutedForeground }]}>
+              Clientes
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.resumoCard,
+              { backgroundColor: colors.dangerLight, borderColor: colors.danger + "40" },
+            ]}
+          >
+            <Feather name="alert-triangle" size={28} color={colors.danger} />
+            <Text style={[styles.resumoNum, { color: colors.danger }]}>
+              {resumoFinanceiro.clientesEmAtraso}
+            </Text>
+            <Text style={[styles.resumoLabel, { color: colors.danger }]}>
+              Em Atraso
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.resumoCard,
+              { backgroundColor: colors.successLight, borderColor: colors.success + "40" },
+            ]}
+          >
+            <Feather name="check-circle" size={28} color={colors.success} />
+            <Text style={[styles.resumoNum, { color: colors.success }]}>
+              {resumoFinanceiro.clientesAtivos - resumoFinanceiro.clientesEmAtraso}
+            </Text>
+            <Text style={[styles.resumoLabel, { color: colors.success }]}>
+              Em Dia
+            </Text>
+          </View>
+        </View>
+
+        {/* ATALHOS */}
+        <Text style={[styles.secTitle, { color: colors.foreground }]}>
+          O que você quer fazer?
+        </Text>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.atalho,
+            { backgroundColor: colors.primary, opacity: pressed ? 0.85 : 1 },
+          ]}
+          onPress={() => router.push("/(tabs)/clientes")}
+        >
+          <View style={styles.atalhoInner}>
+            <View style={styles.atalhoIcon}>
+              <Feather name="users" size={28} color="#fff" />
+            </View>
+            <View style={styles.atalhoText}>
+              <Text style={styles.atalhoTitle}>Ver Clientes</Text>
+              <Text style={styles.atalhoSub}>Lista completa de clientes</Text>
+            </View>
+            <Feather name="chevron-right" size={24} color="#fff" />
+          </View>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.atalho,
+            { backgroundColor: colors.success, opacity: pressed ? 0.85 : 1 },
+          ]}
+          onPress={() => router.push("/(tabs)/cobrancas")}
+        >
+          <View style={styles.atalhoInner}>
+            <View style={styles.atalhoIcon}>
+              <Feather name="bell" size={28} color="#fff" />
+            </View>
+            <View style={styles.atalhoText}>
+              <Text style={styles.atalhoTitle}>Fazer Cobrança</Text>
+              <Text style={styles.atalhoSub}>
+                {resumoFinanceiro.clientesEmAtraso} clientes precisam pagar
+              </Text>
+            </View>
+            <Feather name="chevron-right" size={24} color="#fff" />
+          </View>
+        </Pressable>
+
+        {/* ALERTAS */}
+        {emAtraso.length > 0 && (
+          <>
+            <Text style={[styles.secTitle, { color: colors.foreground }]}>
+              Atenção — Clientes em Atraso
+            </Text>
+            {emAtraso.map((c) => (
+              <View
+                key={c.id}
+                style={[
+                  styles.alertCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.danger + "50",
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.alertAvatar,
+                    { backgroundColor: colors.dangerLight },
+                  ]}
+                >
+                  <Text style={[styles.alertAvatarText, { color: colors.danger }]}>
+                    {c.nome.charAt(0)}
+                  </Text>
+                </View>
+                <View style={styles.alertInfo}>
+                  <Text style={[styles.alertName, { color: colors.foreground }]}>
+                    {c.nome}
+                  </Text>
+                  <Text style={[styles.alertDays, { color: colors.danger }]}>
+                    {c.diasAtraso} dias em atraso
+                  </Text>
+                </View>
+                <Text style={[styles.alertVal, { color: colors.danger }]}>
+                  {formatarMoeda(c.saldoDevedor)}
+                </Text>
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -190,140 +204,146 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 16, gap: 8 },
-  heroCard: {
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 8,
-    gap: 4,
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  heroLabel: {
-    fontSize: 13,
-    color: "#94a3b8",
-    fontFamily: "Inter_400Regular",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  heroValue: {
-    fontSize: 36,
+  appName: {
+    fontSize: 30,
     fontFamily: "Inter_700Bold",
     color: "#ffffff",
+    letterSpacing: -0.5,
+  },
+  appSub: {
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+    color: "#bfdbfe",
+    marginTop: 2,
+  },
+  scroll: {
+    padding: 16,
+    gap: 12,
+  },
+  totalCard: {
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  totalLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  totalValue: {
+    fontSize: 44,
+    fontFamily: "Inter_700Bold",
     letterSpacing: -1,
   },
-  heroRow: {
-    flexDirection: "row",
-    marginTop: 4,
-  },
-  heroBadge: {
+  totalBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "#fbbf2420",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
   },
-  heroBadgeText: {
-    fontSize: 12,
-    color: "#fbbf24",
-    fontFamily: "Inter_500Medium",
+  totalBadgeText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
   },
-  summaryRow: {
+  resumoRow: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 8,
   },
-  summaryCard: {
+  resumoCard: {
     flex: 1,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    padding: 14,
     alignItems: "center",
-    gap: 4,
-    borderWidth: 1,
+    gap: 6,
+    borderWidth: 1.5,
   },
-  summaryIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-  },
-  summaryValue: {
-    fontSize: 22,
+  resumoNum: {
+    fontSize: 30,
     fontFamily: "Inter_700Bold",
   },
-  summaryLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
+  resumoLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
     textAlign: "center",
   },
-  sectionTitle: {
-    fontSize: 17,
+  secTitle: {
+    fontSize: 19,
     fontFamily: "Inter_700Bold",
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 4,
   },
-  shortcuts: {
+  atalho: {
+    borderRadius: 14,
+    padding: 18,
+  },
+  atalhoInner: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 8,
-  },
-  shortcut: {
-    width: "47%",
-    borderRadius: 12,
-    padding: 16,
     alignItems: "center",
-    gap: 8,
-    borderWidth: 1,
+    gap: 14,
   },
-  shortcutIcon: {
+  atalhoIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  atalhoText: { flex: 1 },
+  atalhoTitle: {
+    fontSize: 19,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  atalhoSub: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
+  alertCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  alertAvatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  shortcutLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  alertCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    marginBottom: 8,
-  },
-  alertLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarText: {
-    fontSize: 16,
+  alertAvatarText: {
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
   },
+  alertInfo: { flex: 1 },
   alertName: {
-    fontSize: 14,
+    fontSize: 17,
     fontFamily: "Inter_600SemiBold",
   },
   alertDays: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    marginTop: 2,
   },
-  alertValue: {
-    fontSize: 15,
+  alertVal: {
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
   },
 });

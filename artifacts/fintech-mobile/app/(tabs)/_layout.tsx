@@ -5,10 +5,11 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
+// NativeTabs para iOS 26+ (liquid glass)
 function NativeTabLayout() {
   return (
     <NativeTabs>
@@ -21,13 +22,14 @@ function NativeTabLayout() {
         <Label>Clientes</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="cobrancas">
-        <Icon sf={{ default: "bell", selected: "bell.fill" }} />
-        <Label>Cobranças</Label>
+        <Icon sf={{ default: "bell.badge", selected: "bell.badge.fill" }} />
+        <Label>Cobrar</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
 }
 
+// Layout clássico acessível para idosos — ícone + texto grande, área de toque gigante
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
@@ -38,29 +40,35 @@ function ClassicTabLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: colors.navActive,
         tabBarInactiveTintColor: colors.navInactive,
-        headerShown: false,
+        tabBarLabelStyle: {
+          fontSize: 13,
+          fontFamily: "Inter_600SemiBold",
+          marginBottom: 4,
+        },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: isIOS ? "transparent" : colors.navBackground,
-          borderTopWidth: 0,
-          elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+          borderTopWidth: 1,
+          borderTopColor: colors.navBorder,
+          elevation: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
+          height: isWeb ? 90 : 80,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 8,
         },
         tabBarBackground: () =>
           isIOS ? (
             <BlurView
               intensity={100}
-              tint={isDark ? "dark" : "systemChromeMaterial"}
+              tint={isDark ? "dark" : "light"}
               style={StyleSheet.absoluteFill}
-            />
-          ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.navBackground },
-              ]}
             />
           ) : null,
       }}
@@ -71,9 +79,9 @@ function ClassicTabLayout() {
           title: "Início",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="house" tintColor={color} size={24} />
+              <SymbolView name="house" tintColor={color} size={26} />
             ) : (
-              <Feather name="home" size={22} color={color} />
+              <Feather name="home" size={26} color={color} />
             ),
         }}
       />
@@ -83,21 +91,21 @@ function ClassicTabLayout() {
           title: "Clientes",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="person.2" tintColor={color} size={24} />
+              <SymbolView name="person.2" tintColor={color} size={26} />
             ) : (
-              <Feather name="users" size={22} color={color} />
+              <Feather name="users" size={26} color={color} />
             ),
         }}
       />
       <Tabs.Screen
         name="cobrancas"
         options={{
-          title: "Cobranças",
+          title: "Cobrar",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="bell" tintColor={color} size={24} />
+              <SymbolView name="bell.badge" tintColor={color} size={26} />
             ) : (
-              <Feather name="bell" size={22} color={color} />
+              <Feather name="bell" size={26} color={color} />
             ),
         }}
       />

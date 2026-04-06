@@ -1,43 +1,48 @@
 const colors = {
   light: {
-    text: "#0f172a",
-    tint: "#0284c7",
+    text: "#111827",
+    tint: "#1d4ed8",
 
-    background: "#f0f4f8",
-    foreground: "#0f172a",
+    background: "#f3f4f6",
+    foreground: "#111827",
 
     card: "#ffffff",
-    cardForeground: "#0f172a",
+    cardForeground: "#111827",
 
-    primary: "#0284c7",
+    primary: "#1d4ed8",
     primaryForeground: "#ffffff",
 
-    secondary: "#e0f2fe",
-    secondaryForeground: "#0369a1",
+    secondary: "#dbeafe",
+    secondaryForeground: "#1e3a8a",
 
-    success: "#16a34a",
+    success: "#15803d",
     successForeground: "#ffffff",
     successLight: "#dcfce7",
 
-    warning: "#ea580c",
+    warning: "#b45309",
     warningForeground: "#ffffff",
-    warningLight: "#ffedd5",
+    warningLight: "#fef3c7",
 
-    muted: "#e2e8f0",
-    mutedForeground: "#64748b",
+    danger: "#b91c1c",
+    dangerForeground: "#ffffff",
+    dangerLight: "#fee2e2",
 
-    accent: "#0284c7",
+    muted: "#e5e7eb",
+    mutedForeground: "#4b5563",
+
+    accent: "#1d4ed8",
     accentForeground: "#ffffff",
 
-    destructive: "#dc2626",
+    destructive: "#b91c1c",
     destructiveForeground: "#ffffff",
 
-    border: "#cbd5e1",
-    input: "#e2e8f0",
+    border: "#d1d5db",
+    input: "#e5e7eb",
 
-    navBackground: "#0f172a",
-    navActive: "#38bdf8",
-    navInactive: "#94a3b8",
+    navBackground: "#ffffff",
+    navActive: "#1d4ed8",
+    navInactive: "#6b7280",
+    navBorder: "#e5e7eb",
   },
 
   radius: 12,
