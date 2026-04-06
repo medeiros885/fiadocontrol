@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "q2_pBrHXS6EHJZdGgEvSy"
+uri = "file://artifacts/fintech-mobile/assets/images/icon.png"
+type = "image"
+title = "fintech app icon"
