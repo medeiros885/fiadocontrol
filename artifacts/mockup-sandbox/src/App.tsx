@@ -16,15 +16,7 @@ interface Cliente {
   vencimento: string;
 }
 
-const CLIENTES: Cliente[] = [
-  { id: "1", nome: "Maria Silva",     telefone: "5511999887766", saldo: 1250, limite: 5000, diasAtraso: 0,  vencimento: "2026-04-20" },
-  { id: "2", nome: "João Pereira",    telefone: "5511988776655", saldo: 3800, limite: 4000, diasAtraso: 15, vencimento: "2026-03-22" },
-  { id: "3", nome: "Ana Souza",       telefone: "5511977665544", saldo: 750,  limite: 2000, diasAtraso: 0,  vencimento: "2026-04-25" },
-  { id: "4", nome: "Carlos Lima",     telefone: "5511966554433", saldo: 2100, limite: 3000, diasAtraso: 7,  vencimento: "2026-03-30" },
-  { id: "5", nome: "Fernanda Costa",  telefone: "5511955443322", saldo: 4500, limite: 6000, diasAtraso: 32, vencimento: "2026-03-05" },
-  { id: "6", nome: "Roberto Alves",   telefone: "5511944332211", saldo: 320,  limite: 1500, diasAtraso: 0,  vencimento: "2026-05-01" },
-  { id: "7", nome: "Patricia Rocha",  telefone: "5511933221100", saldo: 1900, limite: 2500, diasAtraso: 3,  vencimento: "2026-04-03" },
-];
+const CLIENTES: Cliente[] = [];
 
 const emAtraso = CLIENTES.filter((c) => c.diasAtraso > 0);
 const totalReceber = CLIENTES.reduce((a, c) => a + c.saldo, 0);
@@ -38,6 +30,14 @@ function dataFmt(d: string) {
 }
 function whatsLink(tel: string, msg: string) {
   return `https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
+}
+
+function msgNoDia(nome: string, valor: string) {
+  return `Olá, ${nome}! Tudo bem? Passando aqui rapidinho para avisar que hoje é o dia do fechamento da sua conta aqui no comércio, no valor de R$ ${valor}. Você prefere passar aqui hoje para acertar ou quer que eu te mande a minha chave PIX? Um abraço!`;
+}
+
+function msgEmAtraso(nome: string, valor: string) {
+  return `Olá, ${nome}, tudo bem? Dei uma olhada aqui no sistema e vi que ficou uma pendência de R$ ${valor}. Aconteceu algum imprevisto? Me avise se você vem acertar hoje ou se prefere que eu envie o PIX para facilitar. Fico no aguardo!`;
 }
 
 /* ──────────────────────────────────────────────────
@@ -174,6 +174,9 @@ function TelaClientes() {
         const atrasado = c.diasAtraso > 0;
         const barColor = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-orange-400" : "bg-green-500";
 
+        const valorNum = moeda(c.saldo).replace("R$", "").trim();
+        const msgWpp = atrasado ? msgEmAtraso(c.nome, valorNum) : msgNoDia(c.nome, valorNum);
+
         return (
           <div
             key={c.id}
@@ -222,6 +225,18 @@ function TelaClientes() {
                 <div className={`h-2 rounded-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
               </div>
             </div>
+
+            {/* Botão WhatsApp */}
+            <a
+              href={whatsLink(c.telefone, msgWpp)}
+              target="_blank"
+              rel="noreferrer"
+              className={`w-full flex items-center justify-center gap-2 rounded-xl py-3 text-white font-bold text-base transition-opacity active:opacity-80
+                ${atrasado ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"}`}
+            >
+              <MessageCircle size={20} />
+              {atrasado ? "Cobrar no WhatsApp" : "Avisar no WhatsApp"}
+            </a>
           </div>
         );
       })}
@@ -257,7 +272,8 @@ function TelaCobrancas() {
         const borderClass =
           urgencia === "alta" ? "border-red-300" : urgencia === "media" ? "border-orange-300" : "border-purple-200";
 
-        const msg = `Olá ${c.nome}! Informamos que sua dívida de ${moeda(c.saldo)} está em aberto há ${c.diasAtraso} dias (vencimento em ${dataFmt(c.vencimento)}). Entre em contato para regularizar. Obrigado!`;
+        const valorNum = moeda(c.saldo).replace("R$", "").trim();
+        const msg = msgEmAtraso(c.nome, valorNum);
 
         return (
           <div key={c.id} className={`bg-white rounded-xl shadow-sm border-2 ${borderClass} p-4 flex flex-col gap-4`}>
