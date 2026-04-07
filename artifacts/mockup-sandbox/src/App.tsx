@@ -300,7 +300,9 @@ export default function App() {
       </nav>
 
       {modalCad && <ModalCadastro inicial={modalCad} aoSalvar={handleSalvar} aoFechar={() => setModalCad(null)} />}
-      {mov && <ModalTransacao cliente={mov.c} tipo={mov.t} onConfirmar={handleMov} onFechar={() => setMov(null)} />}
+
+      {/* O ERRO ESTAVA AQUI EMBAIXO! Arrumei o nome do componente para ModalMovimentacao */}
+      {mov && <ModalMovimentacao cliente={mov.c} tipo={mov.t} onConfirmar={handleMov} onFechar={() => setMov(null)} />}
     </div>
   );
 }
