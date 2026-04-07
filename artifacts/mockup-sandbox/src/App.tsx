@@ -3,7 +3,7 @@ import {
   AlertCircle, Bell, CheckCircle, ChevronRight,
   DollarSign, Home, MapPin, MessageCircle, Phone,
   Plus, User, UserPlus, Users, X, 
-  Trash2, Search, Calendar, Clock, Pencil, UserMinus
+  Trash2, Search, Calendar, Clock, Pencil
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────
@@ -43,10 +43,6 @@ const maskMoeda = (v: string) => {
 const calcularStatusPrazo = (c: any) => {
   const hojeStr = obterDataLocalISO();
 
-  // Se nunca comprou nada
-  if (!c.teveCompra && c.saldo === 0) return { label: "Inativo", color: "text-gray-500 bg-gray-100", icon: UserMinus, tipo: 'inativo' };
-
-  // Se já comprou mas o saldo é zero
   if (c.saldo <= 0) return { label: "Em Dia", color: "text-green-600 bg-green-50", icon: CheckCircle, tipo: 'em_dia' };
 
   if (c.vencimento < hojeStr) return { label: `Atrasado`, color: "text-red-600 bg-red-50", icon: AlertCircle, tipo: 'atrasado' };
@@ -116,35 +112,17 @@ function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
           <h2 className="text-2xl font-bold">{inicial?.id ? "Editar Cadastro" : "Cadastrar Novo Cliente"}</h2>
           <button onClick={aoFechar} className="p-2 bg-gray-100 rounded-full text-gray-400"><X /></button>
         </div>
-        <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><User size={16} className="text-blue-600" /> Nome Completo</label>
-            <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Maria da Silva" />
-        </div>
-        <div className="flex flex-col gap-1.5 w-full">
-            <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><MapPin size={16} className="text-blue-600" /> Endereço</label>
-            <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} placeholder="Ex: Rua das Flores, 123" />
+        <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Nome Completo</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} /></div>
+        <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Endereço</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} /></div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Compra</label><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold text-sm" value={dtCompra} onChange={e => setDtCompra(e.target.value)} /></div>
+          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Vencimento</label><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold text-sm" value={dtVenc} onChange={e => setDtVenc(e.target.value)} /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><Calendar size={16} className="text-blue-600" /> Data Compra</label>
-              <input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtCompra} onChange={e => setDtCompra(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><Clock size={16} className="text-blue-600" /> Vencimento</label>
-              <input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtVenc} onChange={e => setDtVenc(e.target.value)} />
-          </div>
+          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">WhatsApp</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} /></div>
+          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Limite R$</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} /></div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><Phone size={16} className="text-blue-600" /> WhatsApp</label>
-              <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" />
-          </div>
-          <div className="flex flex-col gap-1.5 w-full">
-              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><DollarSign size={16} className="text-blue-600" /> Limite de Crédito</label>
-              <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" />
-          </div>
-        </div>
-        <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="w-full bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg mt-2 active:scale-95">Salvar Alterações</button>
+        <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="w-full bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg mt-2 active:scale-95">Salvar</button>
       </div>
     </div>
   );
@@ -159,8 +137,7 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
 
   const noPrazo = clientes.filter(c => c.saldo > 0 && c.vencimento >= hojeStr);
   const emAtraso = clientes.filter(c => c.saldo > 0 && c.vencimento < hojeStr);
-  const emDia = clientes.filter(c => c.saldo <= 0 && c.teveCompra);
-  const inativos = clientes.filter(c => !c.teveCompra && c.saldo === 0);
+  const emDia = clientes.filter(c => c.saldo <= 0);
 
   return (
     <div className="p-4 flex flex-col gap-6 animate-in fade-in">
@@ -172,26 +149,22 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div onClick={() => { setFiltroCobranca('no_prazo'); setTela("cobrancas"); }} className="bg-white rounded-2xl p-4 py-6 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 cursor-pointer">
-          <Clock size={28} className="text-blue-600" />
-          <p className="text-2xl font-black mt-1">{noPrazo.length}</p>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">No Prazo</p>
+      {/* DASHBOARD EM UMA LINHA SÓ */}
+      <div className="grid grid-cols-3 gap-2">
+        <div onClick={() => { setFiltroCobranca('no_prazo'); setTela("cobrancas"); }} className="bg-white rounded-2xl p-3 py-5 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 cursor-pointer">
+          <Clock size={20} className="text-blue-600" />
+          <p className="text-lg font-black mt-1">{noPrazo.length}</p>
+          <p className="text-[9px] text-gray-400 font-bold uppercase text-center">No Prazo</p>
         </div>
-        <div onClick={() => { setFiltroCobranca('atrasado'); setTela("cobrancas"); }} className="bg-red-50 rounded-2xl p-4 py-6 flex flex-col items-center gap-1 border border-red-100 active:scale-95 cursor-pointer">
-          <AlertCircle size={28} className="text-red-600" />
-          <p className="text-2xl font-black text-red-600 mt-1">{emAtraso.length}</p>
-          <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Em Atraso</p>
+        <div onClick={() => { setFiltroCobranca('atrasado'); setTela("cobrancas"); }} className="bg-red-50 rounded-2xl p-3 py-5 flex flex-col items-center gap-1 border border-red-100 active:scale-95 cursor-pointer">
+          <AlertCircle size={20} className="text-red-600" />
+          <p className="text-lg font-black text-red-600 mt-1">{emAtraso.length}</p>
+          <p className="text-[9px] text-red-400 font-bold uppercase text-center">Em Atraso</p>
         </div>
-        <div onClick={() => { setFiltroCobranca('em_dia'); setTela("cobrancas"); }} className="bg-green-50 rounded-2xl p-4 py-6 flex flex-col items-center gap-1 border border-green-100 active:scale-95 cursor-pointer">
-          <CheckCircle size={28} className="text-green-600" />
-          <p className="text-2xl font-black text-green-600 mt-1">{emDia.length}</p>
-          <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Em Dia</p>
-        </div>
-        <div onClick={() => { setFiltroCobranca('inativo'); setTela("cobrancas"); }} className="bg-gray-50 rounded-2xl p-4 py-6 flex flex-col items-center gap-1 border border-gray-200 active:scale-95 cursor-pointer">
-          <UserMinus size={28} className="text-gray-400" />
-          <p className="text-2xl font-black text-gray-500 mt-1">{inativos.length}</p>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Cadastros</p>
+        <div onClick={() => { setFiltroCobranca('em_dia'); setTela("cobrancas"); }} className="bg-green-50 rounded-2xl p-3 py-5 flex flex-col items-center gap-1 border border-green-100 active:scale-95 cursor-pointer">
+          <CheckCircle size={20} className="text-green-600" />
+          <p className="text-lg font-black text-green-600 mt-1">{emDia.length}</p>
+          <p className="text-[9px] text-green-600 font-bold uppercase text-center">Em Dia</p>
         </div>
       </div>
 
@@ -235,7 +208,6 @@ function TelaClientes({ clientes, onLancar, onEditar, onApagar, abrirCad }: any)
                 <div className="flex items-center justify-between">
                     <p className="text-xl font-black text-gray-800">{c.nome}</p>
                     <div className="flex gap-2">
-                        {/* BOTÃO DO LÁPIS ADICIONADO AQUI */}
                         <button onClick={() => onEditar(c)} className="text-blue-500 bg-blue-50 p-2 rounded-lg active:scale-90"><Pencil size={18}/></button>
                         <button onClick={() => onApagar(c)} className="text-red-400 bg-red-50 p-2 rounded-lg active:scale-90"><Trash2 size={18}/></button>
                     </div>
@@ -283,7 +255,6 @@ export default function App() {
     if (modalCad?.id) {
       setClientes(clientes.map(c => c.id === modalCad.id ? { ...c, ...dados } : c));
     } else {
-      // Importante: novos clientes começam com teveCompra = false
       setClientes([{ id: Date.now().toString(), saldo: 0, teveCompra: false, ...dados }, ...clientes]);
     }
     setModalCad(null);
@@ -305,13 +276,12 @@ export default function App() {
     setMov(null);
   };
 
-  const titulos:any = { atrasado: "Clientes em Atraso", em_dia: "Clientes em Dia", no_prazo: "Clientes no Prazo", inativo: "Novos Cadastros", todos: "Todos os Clientes" };
+  const titulos:any = { atrasado: "Clientes em Atraso", em_dia: "Clientes em Dia", no_prazo: "Clientes no Prazo", todos: "Todos os Clientes" };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24 font-sans text-gray-900">
       <header className="bg-blue-700 text-white p-6 pt-12 pb-8 shadow-xl">
-        <h1 className="text-4xl font-black tracking-tighter">FiadoControl</h1>
-        <p className="text-blue-200 font-bold text-xs uppercase tracking-widest mt-1">Controle de Crédito</p>
+        <h1 className="text-4xl font-black tracking-tighter text-center">FiadoControl</h1>
       </header>
 
       <main className="flex-1 overflow-y-auto">
@@ -325,7 +295,7 @@ export default function App() {
                  if (filtroCobranca !== 'todos' && status.tipo !== filtroCobranca && !(filtroCobranca === 'no_prazo' && status.tipo === 'hoje')) return null;
 
                  const msgZap = gerarMensagemWhatsapp(c, status);
-                 const isBom = status.tipo === 'em_dia' || status.tipo === 'inativo';
+                 const isBom = status.tipo === 'em_dia';
 
                  return (
                     <div key={c.id} className={`bg-white p-6 rounded-[32px] border-l-8 shadow-sm flex flex-col gap-4 relative ${isBom ? 'border-green-500' : 'border-orange-500'}`}>
