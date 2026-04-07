@@ -42,9 +42,27 @@ const calcularStatusPrazo = (vencimento: string) => {
   const diffTime = dataVenc.getTime() - hoje.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, color: "text-red-600 bg-red-50", icon: AlertCircle };
-  if (diffDays === 0) return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock };
-  return { label: `Vence em ${diffDays}d`, color: "text-blue-600 bg-blue-50", icon: Calendar };
+  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, color: "text-red-600 bg-red-50", icon: AlertCircle, tipo: 'atrasado' };
+  if (diffDays === 0) return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock, tipo: 'hoje' };
+  return { label: `Vence em ${diffDays}d`, color: "text-blue-600 bg-blue-50", icon: Calendar, tipo: 'dia' };
+};
+
+// 💌 MENSAGENS PERSONALIZADAS (SEM O NOME DO APP)
+const gerarMensagemWhatsapp = (cliente: any, status: any) => {
+  const saudacao = "Olá";
+  const nomeC = `*${cliente.nome}*`;
+  const valorC = `*${fmtMoeda(cliente.saldo)}*`;
+  const dataC = `*${fmtDataBr(cliente.vencimento)}*`;
+
+  if (status.tipo === 'atrasado') {
+    return `${saudacao} ${nomeC}, tudo bem? Passando para fazer um lembrete amigável sobre o seu saldo em aberto. O valor atual é de ${valorC} e o vencimento foi em ${dataC}. Aguardamos o seu retorno para combinarmos o pagamento! Obrigado pela parceria.`;
+  }
+
+  if (status.tipo === 'hoje') {
+    return `Oi ${nomeC}! Lembrete rápido: a sua conta no valor de ${valorC} vence hoje (${dataC}). Qualquer dúvida é só nos chamar aqui. Tenha um ótimo dia!`;
+  }
+
+  return `${saudacao} ${nomeC}! Passando apenas para agradecer a sua parceria e por manter o seu saldo em dia! Conte sempre conosco!`;
 };
 
 /* ─────────────────────────────────────────────────
@@ -60,7 +78,7 @@ const CampoForm = ({ label, icon: Icon, children }: any) => (
 );
 
 /* ─────────────────────────────────────────────────
-   3. MODAIS (CADASTRO E MOVIMENTAÇÃO)
+   3. MODAIS
 ───────────────────────────────────────────────── */
 function ModalMovimentacao({ cliente, tipo, onConfirmar, onFechar }: any) {
   const isPagamento = tipo === 'pagamento';
@@ -87,7 +105,7 @@ function ModalMovimentacao({ cliente, tipo, onConfirmar, onFechar }: any) {
   );
 }
 
-function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
+function ModalCadastro({ inicial, aoSalvar, aoFechar, aoApagar }: any) {
   const hoje = new Date().toISOString().split("T")[0];
   const [nome, setNome] = useState(inicial?.nome || "");
   const [end, setEnd] = useState(inicial?.endereco || "");
@@ -113,7 +131,12 @@ function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
           <CampoForm label="Telefone WhatsApp" icon={Phone}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" /></CampoForm>
           <CampoForm label="Limite" icon={DollarSign}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" /></CampoForm>
         </div>
-        <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="w-full bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg mt-2">Salvar Cliente</button>
+        <div className="flex gap-3 mt-2">
+            {inicial?.id && (
+                <button onClick={aoApagar} className="p-5 bg-red-50 text-red-600 rounded-2xl"><Trash2/></button>
+            )}
+            <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="flex-1 bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg">Salvar Cliente</button>
+        </div>
       </div>
     </div>
   );
@@ -180,7 +203,7 @@ function TelaInicio({ clientes, setTela, abrirCad }: any) {
   );
 }
 
-function TelaClientes({ clientes, onLancar, onApagar, onEditar, abrirCad }: any) {
+function TelaClientes({ clientes, onLancar, onEditar, abrirCad }: any) {
   const [busca, setBusca] = useState("");
   const filtrados = clientes.filter((c: any) => c.nome.toLowerCase().includes(busca.toLowerCase()));
 
@@ -196,10 +219,12 @@ function TelaClientes({ clientes, onLancar, onApagar, onEditar, abrirCad }: any)
       {filtrados.map((c: any) => {
         const prazo = calcularStatusPrazo(c.vencimento);
         const IconP = prazo.icon;
+        const limiteLivre = c.limite - c.saldo;
+
         return (
           <div key={c.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
             <div className="flex justify-between items-start">
-              <div onClick={() => onEditar(c)}>
+              <div onClick={() => onEditar(c)} className="flex-1">
                 <p className="text-xl font-black text-gray-800">{c.nome}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${prazo.color}`}>
@@ -208,15 +233,16 @@ function TelaClientes({ clientes, onLancar, onApagar, onEditar, abrirCad }: any)
                 </div>
               </div>
               <div className="flex flex-col items-end">
-                 <button onClick={() => onApagar(c)} className="text-gray-200 mb-2 p-1"><Trash2 size={18}/></button>
                  <p className="text-2xl font-black text-red-600 leading-none">{fmtMoeda(c.saldo)}</p>
-                 <p className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Limite: {fmtMoeda(c.limite)}</p>
+                 <p className={`text-[10px] font-bold mt-1 uppercase ${limiteLivre < 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                   Livre: {fmtMoeda(limiteLivre)}
+                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2">Venda (+)</button>
-              <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2">Pagou ($)</button>
+              <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95 transition-all">Venda (+)</button>
+              <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95 transition-all">Pagou ($)</button>
             </div>
           </div>
         );
@@ -250,6 +276,13 @@ export default function App() {
     setModalCad(null);
   };
 
+  const handleApagar = (id: string, nome: string) => {
+      if(confirm(`Tem certeza que deseja apagar o cadastro de ${nome}?`)) {
+          setClientes(clientes.filter(c => c.id !== id));
+          setModalCad(null);
+      }
+  }
+
   const handleMov = (valor: number) => {
     const f = mov.t === 'compra' ? 1 : -1;
     setClientes(clientes.map(c => c.id === mov.c.id ? { ...c, saldo: Math.max(0, c.saldo + (valor * f)) } : c));
@@ -265,21 +298,37 @@ export default function App() {
 
       <main className="flex-1 overflow-y-auto">
         {tela === "inicio" && <TelaInicio clientes={clientes} setTela={setTela} abrirCad={() => setModalCad({})} />}
-        {tela === "clientes" && <TelaClientes clientes={clientes} abrirCad={() => setModalCad({})} onLancar={(c:any, t:any) => setMov({c, t})} onApagar={(c:any) => confirm(`Apagar ${c.nome}?`) && setClientes(clientes.filter(x => x.id !== c.id))} onEditar={setModalCad} />}
+        {tela === "clientes" && <TelaClientes clientes={clientes} abrirCad={() => setModalCad({})} onLancar={(c:any, t:any) => setMov({c, t})} onEditar={setModalCad} />}
         {tela === "cobrancas" && (
           <div className="p-4 flex flex-col gap-4">
              <p className="text-xl font-black text-orange-600 mb-2">Cobranças Ativas</p>
-             {clientes.filter(c => c.saldo > 0).map(c => (
-               <div key={c.id} className="bg-white p-6 rounded-[32px] border-l-8 border-orange-500 shadow-sm flex flex-col gap-4">
-                  <div className="flex justify-between items-center font-black">
-                    <p className="text-xl">{c.nome}</p>
-                    <p className="text-2xl text-red-600">{fmtMoeda(c.saldo)}</p>
-                  </div>
-                  <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${c.nome}, lembrete do saldo de ${fmtMoeda(c.saldo)} que venceu em ${fmtDataBr(c.vencimento)}.`)}`} target="_blank" rel="noreferrer" className="bg-green-600 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2">
-                    <MessageCircle size={20}/> Cobrar WhatsApp
-                  </a>
-               </div>
-             ))}
+             {clientes.filter(c => c.saldo > 0).map(c => {
+                 const prazo = calcularStatusPrazo(c.vencimento);
+                 const IconP = prazo.icon;
+                 const msgZap = gerarMensagemWhatsapp(c, prazo);
+
+                 return (
+                    <div key={c.id} className="bg-white p-6 rounded-[32px] border-l-8 border-orange-500 shadow-sm flex flex-col gap-4 relative">
+                        <div className="absolute top-3 right-5 items-center gap-1 flex">
+                            <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${prazo.color}`}>
+                                <IconP size={12}/> {prazo.label}
+                            </span>
+                        </div>
+
+                        <div className="flex justify-between items-end font-black mt-2">
+                            <div>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase">Cliente</p>
+                                <p className="text-xl">{c.nome}</p>
+                            </div>
+                            <p className="text-2xl text-red-600 leading-none">{fmtMoeda(c.saldo)}</p>
+                        </div>
+
+                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(msgZap)}`} target="_blank" rel="noreferrer" className="bg-green-600 text-white p-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md">
+                            <MessageCircle size={24}/> Cobrar WhatsApp
+                        </a>
+                    </div>
+                 )
+             })}
           </div>
         )}
       </main>
@@ -290,7 +339,7 @@ export default function App() {
         <button onClick={() => setTela("cobrancas")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "cobrancas" ? "text-blue-700" : "text-gray-300"}`}><Bell size={28}/><span className="text-[10px] font-bold">Cobrar</span></button>
       </nav>
 
-      {modalCad && <ModalCadastro inicial={modalCad} aoSalvar={handleSalvar} aoFechar={() => setModalCad(null)} />}
+      {modalCad && <ModalCadastro inicial={modalCad} aoSalvar={handleSalvar} aoFechar={() => setModalCad(null)} aoApagar={() => handleApagar(modalCad.id, modalCad.nome)} />}
       {mov && <ModalMovimentacao cliente={mov.c} tipo={mov.t} onConfirmar={handleMov} onFechar={() => setMov(null)} />}
     </div>
   );
