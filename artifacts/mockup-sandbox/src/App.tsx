@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   AlertCircle, Bell, CheckCircle, ChevronRight,
   DollarSign, Home, MapPin, MessageCircle, Phone,
-  Plus, User, UserPlus, Users, X, ShoppingCart, 
-  Trash2, HandCoins, Search, Edit3, Save, ArrowLeft,
-  Calendar, Clock
+  Plus, User, UserPlus, Users, X, 
+  Trash2, Search, Calendar, Clock
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────
@@ -49,7 +48,7 @@ const calcularStatusPrazo = (vencimento: string) => {
 };
 
 /* ─────────────────────────────────────────────────
-   2. COMPONENTES DE UI (FORA PARA NÃO BUGAR TECLADO)
+   2. COMPONENTES DE UI
 ───────────────────────────────────────────────── */
 const CampoForm = ({ label, icon: Icon, children }: any) => (
   <div className="flex flex-col gap-1.5 w-full">
@@ -121,7 +120,7 @@ function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
 }
 
 /* ─────────────────────────────────────────────────
-   4. TELAS (ESTILO LAYOUT 19:15)
+   4. TELAS
 ───────────────────────────────────────────────── */
 function TelaInicio({ clientes, setTela, abrirCad }: any) {
   const total = useMemo(() => clientes.reduce((acc: any, c: any) => acc + c.saldo, 0), [clientes]);
@@ -133,7 +132,6 @@ function TelaInicio({ clientes, setTela, abrirCad }: any) {
 
   return (
     <div className="p-4 flex flex-col gap-6 animate-in fade-in">
-      {/* Card Principal de Saldo */}
       <div className="bg-white rounded-3xl shadow-sm p-8 flex flex-col items-center gap-2 border border-gray-100">
         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total a Receber</p>
         <p className="text-5xl font-black text-red-600">{fmtMoeda(total)}</p>
@@ -142,7 +140,6 @@ function TelaInicio({ clientes, setTela, abrirCad }: any) {
         </div>
       </div>
 
-      {/* Grid de Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-sm border border-gray-50">
           <Users size={24} className="text-blue-600" />
@@ -161,22 +158,18 @@ function TelaInicio({ clientes, setTela, abrirCad }: any) {
         </div>
       </div>
 
-      {/* Atalhos */}
       <div className="flex flex-col gap-4 mt-2">
         <p className="text-lg font-bold text-gray-800">O que você quer fazer?</p>
-
         <button onClick={abrirCad} className="bg-green-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
           <div className="bg-white/20 p-2 rounded-xl"><UserPlus size={24}/></div>
           <p className="text-lg">Cadastrar Novo Cliente</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
-
         <button onClick={() => setTela("clientes")} className="bg-blue-700 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
           <div className="bg-white/20 p-2 rounded-xl"><Users size={24}/></div>
           <p className="text-lg">Ver Clientes</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
-
         <button onClick={() => setTela("cobrancas")} className="bg-orange-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
           <div className="bg-white/20 p-2 rounded-xl"><Bell size={24}/></div>
           <p className="text-lg">Fazer Cobrança</p>
@@ -233,7 +226,7 @@ function TelaClientes({ clientes, onLancar, onApagar, onEditar, abrirCad }: any)
 }
 
 /* ─────────────────────────────────────────────────
-   5. APP PRINCIPAL (FIADOCONTROL)
+   5. APP PRINCIPAL
 ───────────────────────────────────────────────── */
 export default function App() {
   const [tela, setTela] = useState("inicio");
@@ -265,7 +258,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24 font-sans text-gray-900">
-      {/* Header com estilo layout 2 */}
       <header className="bg-blue-700 text-white p-6 pt-12 pb-8 shadow-xl">
         <h1 className="text-4xl font-black tracking-tighter">FiadoControl</h1>
         <p className="text-blue-200 font-bold text-xs uppercase tracking-widest mt-1">Controle de Crédito</p>
@@ -283,7 +275,7 @@ export default function App() {
                     <p className="text-xl">{c.nome}</p>
                     <p className="text-2xl text-red-600">{fmtMoeda(c.saldo)}</p>
                   </div>
-                  <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${c.nome}, lembrete do saldo de ${fmtMoeda(c.saldo)} que venceu em ${fmtDataBr(c.vencimento)}.`)}`} target="_blank" className="bg-green-600 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2">
+                  <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá ${c.nome}, lembrete do saldo de ${fmtMoeda(c.saldo)} que venceu em ${fmtDataBr(c.vencimento)}.`)}`} target="_blank" rel="noreferrer" className="bg-green-600 text-white p-4 rounded-2xl font-bold flex items-center justify-center gap-2">
                     <MessageCircle size={20}/> Cobrar WhatsApp
                   </a>
                </div>
@@ -292,7 +284,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Nav Inferior */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex h-20 shadow-2xl z-50 items-center px-4">
         <button onClick={() => setTela("inicio")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "inicio" ? "text-blue-700" : "text-gray-300"}`}><Home size={28}/><span className="text-[10px] font-bold">Início</span></button>
         <button onClick={() => setTela("clientes")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "clientes" ? "text-blue-700" : "text-gray-300"}`}><Users size={28}/><span className="text-[10px] font-bold">Clientes</span></button>
@@ -300,8 +291,6 @@ export default function App() {
       </nav>
 
       {modalCad && <ModalCadastro inicial={modalCad} aoSalvar={handleSalvar} aoFechar={() => setModalCad(null)} />}
-
-      {/* O ERRO ESTAVA AQUI EMBAIXO! Arrumei o nome do componente para ModalMovimentacao */}
       {mov && <ModalMovimentacao cliente={mov.c} tipo={mov.t} onConfirmar={handleMov} onFechar={() => setMov(null)} />}
     </div>
   );
