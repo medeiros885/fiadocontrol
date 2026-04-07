@@ -3,7 +3,7 @@ import {
   AlertCircle, Bell, CheckCircle, ChevronRight,
   DollarSign, Home, MapPin, MessageCircle, Phone,
   Plus, User, UserPlus, Users, X, 
-  Trash2, Search, Calendar, Clock
+  Trash2, Search, Calendar, Clock, Pencil, UserMinus
 } from "lucide-react";
 
 /* ─────────────────────────────────────────────────
@@ -18,7 +18,6 @@ const fmtDataBr = (isoDate: string) => {
   return `${dia}/${mes}/${ano}`;
 };
 
-// 📅 FIX: Pegar a data local correta (sem viajar pro futuro em Londres)
 const obterDataLocalISO = () => {
   const d = new Date();
   const z = d.getTimezoneOffset() * 60000;
@@ -41,20 +40,18 @@ const maskMoeda = (v: string) => {
   });
 };
 
-const calcularStatusPrazo = (vencimento: string, saldo: number) => {
+const calcularStatusPrazo = (c: any) => {
   const hojeStr = obterDataLocalISO();
 
-  // Se não deve nada, está sempre "Em Dia"
-  if (saldo <= 0) return { label: "Em Dia", color: "text-green-600 bg-green-50", icon: CheckCircle, tipo: 'em_dia' };
+  // Se nunca comprou nada
+  if (!c.teveCompra && c.saldo === 0) return { label: "Inativo", color: "text-gray-500 bg-gray-100", icon: UserMinus, tipo: 'inativo' };
 
-  if (vencimento < hojeStr) {
-      return { label: `Atrasado`, color: "text-red-600 bg-red-50", icon: AlertCircle, tipo: 'atrasado' };
-  }
-  if (vencimento === hojeStr) {
-      return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock, tipo: 'hoje' };
-  }
+  // Se já comprou mas o saldo é zero
+  if (c.saldo <= 0) return { label: "Em Dia", color: "text-green-600 bg-green-50", icon: CheckCircle, tipo: 'em_dia' };
 
-  return { label: `No Prazo`, color: "text-blue-600 bg-blue-50", icon: Calendar, tipo: 'em_dia' };
+  if (c.vencimento < hojeStr) return { label: `Atrasado`, color: "text-red-600 bg-red-50", icon: AlertCircle, tipo: 'atrasado' };
+  if (c.vencimento === hojeStr) return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock, tipo: 'hoje' };
+  return { label: `No Prazo`, color: "text-blue-600 bg-blue-50", icon: Calendar, tipo: 'no_prazo' };
 };
 
 const gerarMensagemWhatsapp = (cliente: any, status: any) => {
@@ -66,28 +63,17 @@ const gerarMensagemWhatsapp = (cliente: any, status: any) => {
   if (status.tipo === 'atrasado') {
     return `${saudacao} ${nomeC}, tudo bem? Passando para fazer um lembrete amigável sobre o seu saldo em aberto. O valor atual é de ${valorC} e o vencimento foi em ${dataC}. Aguardamos o seu retorno para combinarmos o pagamento! Obrigado pela parceria.`;
   }
-
   if (status.tipo === 'hoje') {
     return `Oi ${nomeC}! Lembrete rápido: a sua conta no valor de ${valorC} vence hoje (${dataC}). Qualquer dúvida é só nos chamar aqui. Tenha um ótimo dia!`;
   }
-
+  if (status.tipo === 'no_prazo') {
+      return `Oi ${nomeC}! Passando para informar que sua conta no valor de ${valorC} tem vencimento para o dia ${dataC}. Qualquer dúvida estamos à disposição. Tenha um ótimo dia!`;
+  }
   return `${saudacao} ${nomeC}! Passando apenas para agradecer a sua parceria e por manter o seu saldo em dia! Conte sempre conosco!`;
 };
 
 /* ─────────────────────────────────────────────────
-   2. COMPONENTES DE UI
-───────────────────────────────────────────────── */
-const CampoForm = ({ label, icon: Icon, children }: any) => (
-  <div className="flex flex-col gap-1.5 w-full">
-    <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-      <Icon size={16} className="text-blue-600" /> {label}
-    </label>
-    {children}
-  </div>
-);
-
-/* ─────────────────────────────────────────────────
-   3. MODAIS
+   2. MODAIS
 ───────────────────────────────────────────────── */
 function ModalMovimentacao({ cliente, tipo, onConfirmar, onFechar }: any) {
   const isPagamento = tipo === 'pagamento';
@@ -127,22 +113,38 @@ function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
     <div className="fixed inset-0 z-[100] bg-black/70 flex flex-col justify-end" onClick={aoFechar}>
       <div className="bg-white rounded-t-[32px] p-6 flex flex-col gap-5 max-h-[95vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-2xl font-bold">{inicial?.id ? "Editar Cliente" : "Cadastrar Novo Cliente"}</h2>
+          <h2 className="text-2xl font-bold">{inicial?.id ? "Editar Cadastro" : "Cadastrar Novo Cliente"}</h2>
           <button onClick={aoFechar} className="p-2 bg-gray-100 rounded-full text-gray-400"><X /></button>
         </div>
-        <CampoForm label="Nome Completo" icon={User}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Maria da Silva" /></CampoForm>
-        <CampoForm label="Endereço" icon={MapPin}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} placeholder="Ex: Rua das Flores, 123" /></CampoForm>
-        <div className="grid grid-cols-2 gap-3">
-          <CampoForm label="Data Compra" icon={Calendar}><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtCompra} onChange={e => setDtCompra(e.target.value)} /></CampoForm>
-          <CampoForm label="Data Vencimento" icon={Clock}><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtVenc} onChange={e => setDtVenc(e.target.value)} /></CampoForm>
+        <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><User size={16} className="text-blue-600" /> Nome Completo</label>
+            <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Maria da Silva" />
+        </div>
+        <div className="flex flex-col gap-1.5 w-full">
+            <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><MapPin size={16} className="text-blue-600" /> Endereço</label>
+            <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} placeholder="Ex: Rua das Flores, 123" />
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <CampoForm label="Telefone WhatsApp" icon={Phone}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" /></CampoForm>
-          <CampoForm label="Limite" icon={DollarSign}><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" /></CampoForm>
+          <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><Calendar size={16} className="text-blue-600" /> Data Compra</label>
+              <input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtCompra} onChange={e => setDtCompra(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><Clock size={16} className="text-blue-600" /> Vencimento</label>
+              <input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={dtVenc} onChange={e => setDtVenc(e.target.value)} />
+          </div>
         </div>
-        <div className="flex gap-3 mt-2">
-            <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="flex-1 bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg">Salvar Cliente</button>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><Phone size={16} className="text-blue-600" /> WhatsApp</label>
+              <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" />
+          </div>
+          <div className="flex flex-col gap-1.5 w-full">
+              <label className="text-sm font-bold text-gray-600 flex items-center gap-2"><DollarSign size={16} className="text-blue-600" /> Limite de Crédito</label>
+              <input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" />
+          </div>
         </div>
+        <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="w-full bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg mt-2 active:scale-95">Salvar Alterações</button>
       </div>
     </div>
   );
@@ -152,43 +154,48 @@ function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
    4. TELAS
 ───────────────────────────────────────────────── */
 function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
-  const total = useMemo(() => clientes.reduce((acc: any, c: any) => acc + c.saldo, 0), [clientes]);
-  const emAtraso = clientes.filter((c: any) => {
-    if (c.saldo <= 0) return false;
-    const hojeStr = obterDataLocalISO();
-    return c.vencimento < hojeStr;
-  });
+  const hojeStr = obterDataLocalISO();
+  const totalReceber = useMemo(() => clientes.reduce((acc: any, c: any) => acc + c.saldo, 0), [clientes]);
+
+  const noPrazo = clientes.filter(c => c.saldo > 0 && c.vencimento >= hojeStr);
+  const emAtraso = clientes.filter(c => c.saldo > 0 && c.vencimento < hojeStr);
+  const emDia = clientes.filter(c => c.saldo <= 0 && c.teveCompra);
+  const inativos = clientes.filter(c => !c.teveCompra && c.saldo === 0);
 
   return (
     <div className="p-4 flex flex-col gap-6 animate-in fade-in">
       <div className="bg-white rounded-3xl shadow-sm p-8 flex flex-col items-center gap-2 border border-gray-100">
         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total a Receber</p>
-        <p className="text-5xl font-black text-red-600">{fmtMoeda(total)}</p>
+        <p className="text-5xl font-black text-red-600">{fmtMoeda(totalReceber)}</p>
         <div className="bg-red-50 text-red-600 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 mt-2">
           <AlertCircle size={14}/> {fmtMoeda(emAtraso.reduce((acc, c) => acc + c.saldo, 0))} em atraso
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div onClick={() => setTela("clientes")} className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 cursor-pointer">
-          <Users size={24} className="text-blue-600" />
-          <p className="text-xl font-bold">{clientes.length}</p>
-          <p className="text-[10px] text-gray-400 font-bold uppercase">Clientes</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div onClick={() => { setFiltroCobranca('no_prazo'); setTela("cobrancas"); }} className="bg-white rounded-2xl p-4 py-6 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 cursor-pointer">
+          <Clock size={28} className="text-blue-600" />
+          <p className="text-2xl font-black mt-1">{noPrazo.length}</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">No Prazo</p>
         </div>
-        <div onClick={() => { setFiltroCobranca('atrasado'); setTela("cobrancas"); }} className="bg-red-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-red-100 active:scale-95 cursor-pointer">
-          <AlertCircle size={24} className="text-red-600" />
-          <p className="text-xl font-bold text-red-600">{emAtraso.length}</p>
-          <p className="text-[10px] text-red-400 font-bold uppercase">Em Atraso</p>
+        <div onClick={() => { setFiltroCobranca('atrasado'); setTela("cobrancas"); }} className="bg-red-50 rounded-2xl p-4 py-6 flex flex-col items-center gap-1 border border-red-100 active:scale-95 cursor-pointer">
+          <AlertCircle size={28} className="text-red-600" />
+          <p className="text-2xl font-black text-red-600 mt-1">{emAtraso.length}</p>
+          <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Em Atraso</p>
         </div>
-        <div onClick={() => { setFiltroCobranca('em_dia'); setTela("cobrancas"); }} className="bg-green-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-green-100 active:scale-95 cursor-pointer">
-          <CheckCircle size={24} className="text-green-600" />
-          <p className="text-xl font-bold text-green-600">{clientes.length - emAtraso.length}</p>
-          <p className="text-[10px] text-green-600 font-bold uppercase">Em Dia</p>
+        <div onClick={() => { setFiltroCobranca('em_dia'); setTela("cobrancas"); }} className="bg-green-50 rounded-2xl p-4 py-6 flex flex-col items-center gap-1 border border-green-100 active:scale-95 cursor-pointer">
+          <CheckCircle size={28} className="text-green-600" />
+          <p className="text-2xl font-black text-green-600 mt-1">{emDia.length}</p>
+          <p className="text-[10px] text-green-600 font-bold uppercase tracking-wider">Em Dia</p>
+        </div>
+        <div onClick={() => { setFiltroCobranca('inativo'); setTela("cobrancas"); }} className="bg-gray-50 rounded-2xl p-4 py-6 flex flex-col items-center gap-1 border border-gray-200 active:scale-95 cursor-pointer">
+          <UserMinus size={28} className="text-gray-400" />
+          <p className="text-2xl font-black text-gray-500 mt-1">{inativos.length}</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Cadastros</p>
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 mt-2">
-        <p className="text-lg font-bold text-gray-800">O que você quer fazer?</p>
+      <div className="flex flex-col gap-3 mt-1">
         <button onClick={abrirCad} className="bg-green-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95">
           <div className="bg-white/20 p-2 rounded-xl"><UserPlus size={24}/></div>
           <p className="text-lg">Cadastrar Novo Cliente</p>
@@ -196,12 +203,7 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
         </button>
         <button onClick={() => setTela("clientes")} className="bg-blue-700 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95">
           <div className="bg-white/20 p-2 rounded-xl"><Users size={24}/></div>
-          <p className="text-lg">Ver Clientes</p>
-          <ChevronRight className="ml-auto opacity-50" />
-        </button>
-        <button onClick={() => { setFiltroCobranca('todos'); setTela("cobrancas"); }} className="bg-orange-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95">
-          <div className="bg-white/20 p-2 rounded-xl"><Bell size={24}/></div>
-          <p className="text-lg">Fazer Cobrança</p>
+          <p className="text-lg">Ver Lista de Clientes</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
       </div>
@@ -223,33 +225,32 @@ function TelaClientes({ clientes, onLancar, onEditar, onApagar, abrirCad }: any)
       <button onClick={abrirCad} className="bg-blue-700 text-white p-4 rounded-xl font-bold flex justify-center gap-2 shadow-md"><Plus /> Novo Cadastro</button>
 
       {filtrados.map((c: any) => {
-        const prazo = calcularStatusPrazo(c.vencimento, c.saldo);
-        const IconP = prazo.icon;
+        const status = calcularStatusPrazo(c);
         const limiteLivre = c.limite - c.saldo;
 
         return (
           <div key={c.id} className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col gap-4">
             <div className="flex justify-between items-start">
-              <div onClick={() => onEditar(c)} className="flex-1">
+              <div className="flex-1">
                 <div className="flex items-center justify-between">
                     <p className="text-xl font-black text-gray-800">{c.nome}</p>
-                    <button onClick={(e) => { e.stopPropagation(); onApagar(c); }} className="text-gray-300 p-1 active:scale-90"><Trash2 size={20}/></button>
+                    <div className="flex gap-2">
+                        {/* BOTÃO DO LÁPIS ADICIONADO AQUI */}
+                        <button onClick={() => onEditar(c)} className="text-blue-500 bg-blue-50 p-2 rounded-lg active:scale-90"><Pencil size={18}/></button>
+                        <button onClick={() => onApagar(c)} className="text-red-400 bg-red-50 p-2 rounded-lg active:scale-90"><Trash2 size={18}/></button>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${prazo.color}`}>
-                    <IconP size={12}/> {prazo.label}
+                  <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${status.color}`}>
+                    <status.icon size={12}/> {status.label}
                   </span>
                 </div>
               </div>
             </div>
-
             <div className="flex justify-between items-end border-t border-gray-50 pt-2">
-                <p className={`text-[10px] font-bold uppercase ${limiteLivre < 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                   Livre: {fmtMoeda(limiteLivre)}
-                </p>
+                <p className={`text-[10px] font-bold uppercase ${limiteLivre < 0 ? 'text-red-500' : 'text-gray-400'}`}>Livre: {fmtMoeda(limiteLivre)}</p>
                 <p className="text-2xl font-black text-red-600 leading-none">{fmtMoeda(c.saldo)}</p>
             </div>
-
             <div className="grid grid-cols-2 gap-3 mt-1">
               <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95">Venda (+)</button>
               <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95">Pagou ($)</button>
@@ -282,25 +283,29 @@ export default function App() {
     if (modalCad?.id) {
       setClientes(clientes.map(c => c.id === modalCad.id ? { ...c, ...dados } : c));
     } else {
-      setClientes([{ id: Date.now().toString(), saldo: 0, ...dados }, ...clientes]);
+      // Importante: novos clientes começam com teveCompra = false
+      setClientes([{ id: Date.now().toString(), saldo: 0, teveCompra: false, ...dados }, ...clientes]);
     }
     setModalCad(null);
   };
 
   const handleApagar = (cliente: any) => {
-      const mensagem = cliente.saldo > 0 
-        ? `Atenção! O cliente ${cliente.nome} ainda deve ${fmtMoeda(cliente.saldo)}. Tem certeza que deseja excluir?` 
-        : `Tem certeza que deseja apagar o cadastro de ${cliente.nome}?`;
-      if(confirm(mensagem)) setClientes(clientes.filter(c => c.id !== cliente.id));
+      const msg = cliente.saldo > 0 ? `Atenção! ${cliente.nome} deve ${fmtMoeda(cliente.saldo)}. Excluir?` : `Excluir ${cliente.nome}?`;
+      if(confirm(msg)) setClientes(clientes.filter(c => c.id !== cliente.id));
   };
 
   const handleMov = (valor: number) => {
-    const f = mov.t === 'compra' ? 1 : -1;
-    setClientes(clientes.map(c => c.id === mov.c.id ? { ...c, saldo: Math.max(0, c.saldo + (valor * f)) } : c));
+    const isCompra = mov.t === 'compra';
+    const f = isCompra ? 1 : -1;
+    setClientes(clientes.map(c => 
+      c.id === mov.c.id 
+        ? { ...c, saldo: Math.max(0, c.saldo + (valor * f)), teveCompra: isCompra ? true : c.teveCompra } 
+        : c
+    ));
     setMov(null);
   };
 
-  const tituloCobranca = filtroCobranca === 'atrasado' ? "Clientes em Atraso" : filtroCobranca === 'em_dia' ? "Clientes em Dia" : "Todos os Clientes";
+  const titulos:any = { atrasado: "Clientes em Atraso", em_dia: "Clientes em Dia", no_prazo: "Clientes no Prazo", inativo: "Novos Cadastros", todos: "Todos os Clientes" };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-24 font-sans text-gray-900">
@@ -314,33 +319,27 @@ export default function App() {
         {tela === "clientes" && <TelaClientes clientes={clientes} abrirCad={() => setModalCad({})} onLancar={(c:any, t:any) => setMov({c, t})} onEditar={setModalCad} onApagar={handleApagar} />}
         {tela === "cobrancas" && (
           <div className="p-4 flex flex-col gap-4">
-             <p className="text-xl font-black text-gray-800 mb-2 border-b pb-2">{tituloCobranca}</p>
+             <p className="text-xl font-black text-gray-800 mb-2 border-b pb-2">{titulos[filtroCobranca]}</p>
              {clientes.map(c => {
-                 const prazo = calcularStatusPrazo(c.vencimento, c.saldo);
+                 const status = calcularStatusPrazo(c);
+                 if (filtroCobranca !== 'todos' && status.tipo !== filtroCobranca && !(filtroCobranca === 'no_prazo' && status.tipo === 'hoje')) return null;
 
-                 // CORREÇÃO: "Em Dia" agora mostra quem não está atrasado nem vence hoje
-                 if (filtroCobranca === 'atrasado' && prazo.tipo !== 'atrasado') return null;
-                 if (filtroCobranca === 'em_dia' && prazo.tipo !== 'em_dia' && prazo.tipo !== 'dia') return null;
-
-                 const msgZap = gerarMensagemWhatsapp(c, prazo);
-                 const isEmDia = prazo.tipo === 'em_dia' || prazo.tipo === 'dia';
+                 const msgZap = gerarMensagemWhatsapp(c, status);
+                 const isBom = status.tipo === 'em_dia' || status.tipo === 'inativo';
 
                  return (
-                    <div key={c.id} className={`bg-white p-6 rounded-[32px] border-l-8 shadow-sm flex flex-col gap-4 relative ${isEmDia ? 'border-green-500' : 'border-orange-500'}`}>
+                    <div key={c.id} className={`bg-white p-6 rounded-[32px] border-l-8 shadow-sm flex flex-col gap-4 relative ${isBom ? 'border-green-500' : 'border-orange-500'}`}>
                         <div className="absolute top-3 right-5 items-center gap-1 flex">
-                            <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${prazo.color}`}>
-                                <prazo.icon size={12}/> {prazo.label}
+                            <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${status.color}`}>
+                                <status.icon size={12}/> {status.label}
                             </span>
                         </div>
                         <div className="flex justify-between items-end font-black mt-2">
-                            <div>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase">Cliente</p>
-                                <p className="text-xl">{c.nome}</p>
-                            </div>
+                            <div><p className="text-[10px] text-gray-400 font-bold uppercase">Cliente</p><p className="text-xl">{c.nome}</p></div>
                             <p className="text-2xl text-red-600 leading-none">{fmtMoeda(c.saldo)}</p>
                         </div>
-                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(msgZap)}`} target="_blank" rel="noreferrer" className={`text-white p-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 shadow-md ${isEmDia ? 'bg-green-600' : 'bg-orange-600'}`}>
-                            <MessageCircle size={24}/> {isEmDia ? 'Enviar Elogio' : 'Cobrar WhatsApp'}
+                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(msgZap)}`} target="_blank" rel="noreferrer" className={`text-white p-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 shadow-md ${isBom ? 'bg-green-600' : 'bg-orange-600'}`}>
+                            <MessageCircle size={24}/> {isBom ? 'Enviar Mensagem' : 'Cobrar WhatsApp'}
                         </a>
                     </div>
                  )
@@ -351,7 +350,7 @@ export default function App() {
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex h-20 shadow-2xl z-50 items-center px-4">
         <button onClick={() => setTela("inicio")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "inicio" ? "text-blue-700" : "text-gray-300"}`}><Home size={28}/><span className="text-[10px] font-bold">Início</span></button>
-        <button onClick={() => setTela("clientes")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "clientes" ? "text-blue-700" : "text-gray-300"}`}><Users size={28}/><span className="text-[10px] font-bold">Clientes</span></button>
+        <button onClick={() => setTela("clientes")} className={`flex-1 flex flex-col items-center gap-1 ${tela === "clientes" ? "text-blue-700" : "text-gray-300"}`}><Users size={28}/><span className="text-[10px] font-bold">Lista</span></button>
         <button onClick={() => { setFiltroCobranca('todos'); setTela("cobrancas"); }} className={`flex-1 flex flex-col items-center gap-1 ${tela === "cobrancas" ? "text-blue-700" : "text-gray-300"}`}><Bell size={28}/><span className="text-[10px] font-bold">Cobrar</span></button>
       </nav>
 
