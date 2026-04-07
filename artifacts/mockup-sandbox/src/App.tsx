@@ -112,15 +112,16 @@ function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
           <h2 className="text-2xl font-bold">{inicial?.id ? "Editar Cadastro" : "Cadastrar Novo Cliente"}</h2>
           <button onClick={aoFechar} className="p-2 bg-gray-100 rounded-full text-gray-400"><X /></button>
         </div>
-        <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Nome Completo</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} /></div>
-        <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Endereço</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} /></div>
+        {/* PLACEHOLDERS RESTAURADOS AQUI 👇 */}
+        <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Nome Completo</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Maria da Silva" /></div>
+        <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Endereço</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={end} onChange={e => setEnd(e.target.value)} placeholder="Ex: Rua das Flores, 123" /></div>
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Compra</label><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold text-sm" value={dtCompra} onChange={e => setDtCompra(e.target.value)} /></div>
           <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Vencimento</label><input type="date" className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold text-sm" value={dtVenc} onChange={e => setDtVenc(e.target.value)} /></div>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">WhatsApp</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} /></div>
-          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Limite R$</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} /></div>
+          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">WhatsApp</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={tel} onChange={e => setTel(maskTelefone(e.target.value))} placeholder="(00) 00000-0000" /></div>
+          <div className="flex flex-col gap-1.5"><label className="text-xs font-bold text-gray-400 uppercase">Limite R$</label><input className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 font-bold" value={lim} onChange={e => setLim(maskMoeda(e.target.value))} placeholder="0,00" /></div>
         </div>
         <button onClick={() => aoSalvar({ nome, endereco: end, telefone: tel, limite: parseFloat(lim.replace(/\./g, "").replace(",", ".")) || 0, dataCompra: dtCompra, vencimento: dtVenc })} className="w-full bg-green-600 text-white py-5 rounded-2xl font-bold text-xl shadow-lg mt-2 active:scale-95">Salvar</button>
       </div>
@@ -149,7 +150,6 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
         </div>
       </div>
 
-      {/* DASHBOARD EM UMA LINHA SÓ */}
       <div className="grid grid-cols-3 gap-2">
         <div onClick={() => { setFiltroCobranca('no_prazo'); setTela("cobrancas"); }} className="bg-white rounded-2xl p-3 py-5 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 cursor-pointer">
           <Clock size={20} className="text-blue-600" />
