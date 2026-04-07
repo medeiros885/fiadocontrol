@@ -18,6 +18,13 @@ const fmtDataBr = (isoDate: string) => {
   return `${dia}/${mes}/${ano}`;
 };
 
+// 📅 FIX: Pegar a data local correta (sem viajar pro futuro em Londres)
+const obterDataLocalISO = () => {
+  const d = new Date();
+  const z = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - z).toISOString().split("T")[0];
+};
+
 const maskTelefone = (v: string) => {
   const d = v.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2) return d;
@@ -35,18 +42,19 @@ const maskMoeda = (v: string) => {
 };
 
 const calcularStatusPrazo = (vencimento: string, saldo: number) => {
+  const hojeStr = obterDataLocalISO();
+
+  // Se não deve nada, está sempre "Em Dia"
   if (saldo <= 0) return { label: "Em Dia", color: "text-green-600 bg-green-50", icon: CheckCircle, tipo: 'em_dia' };
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  const dataVenc = new Date(vencimento);
-  dataVenc.setHours(0, 0, 0, 0);
-  const diffTime = dataVenc.getTime() - hoje.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (vencimento < hojeStr) {
+      return { label: `Atrasado`, color: "text-red-600 bg-red-50", icon: AlertCircle, tipo: 'atrasado' };
+  }
+  if (vencimento === hojeStr) {
+      return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock, tipo: 'hoje' };
+  }
 
-  if (diffDays < 0) return { label: `Atrasado ${Math.abs(diffDays)}d`, color: "text-red-600 bg-red-50", icon: AlertCircle, tipo: 'atrasado' };
-  if (diffDays === 0) return { label: "Vence Hoje", color: "text-orange-600 bg-orange-50", icon: Clock, tipo: 'hoje' };
-  return { label: `Vence em ${diffDays}d`, color: "text-blue-600 bg-blue-50", icon: Calendar, tipo: 'dia' };
+  return { label: `No Prazo`, color: "text-blue-600 bg-blue-50", icon: Calendar, tipo: 'em_dia' };
 };
 
 const gerarMensagemWhatsapp = (cliente: any, status: any) => {
@@ -61,10 +69,6 @@ const gerarMensagemWhatsapp = (cliente: any, status: any) => {
 
   if (status.tipo === 'hoje') {
     return `Oi ${nomeC}! Lembrete rápido: a sua conta no valor de ${valorC} vence hoje (${dataC}). Qualquer dúvida é só nos chamar aqui. Tenha um ótimo dia!`;
-  }
-
-  if (status.tipo === 'dia') {
-      return `Oi ${nomeC}! Passando para informar que sua conta no valor de ${valorC} tem vencimento para o dia ${dataC}. Qualquer dúvida estamos à disposição. Tenha um ótimo dia!`;
   }
 
   return `${saudacao} ${nomeC}! Passando apenas para agradecer a sua parceria e por manter o seu saldo em dia! Conte sempre conosco!`;
@@ -111,7 +115,7 @@ function ModalMovimentacao({ cliente, tipo, onConfirmar, onFechar }: any) {
 }
 
 function ModalCadastro({ inicial, aoSalvar, aoFechar }: any) {
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = obterDataLocalISO();
   const [nome, setNome] = useState(inicial?.nome || "");
   const [end, setEnd] = useState(inicial?.endereco || "");
   const [tel, setTel] = useState(inicial?.telefone || "");
@@ -151,9 +155,9 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
   const total = useMemo(() => clientes.reduce((acc: any, c: any) => acc + c.saldo, 0), [clientes]);
   const emAtraso = clientes.filter((c: any) => {
     if (c.saldo <= 0) return false;
-    return new Date(c.vencimento).getTime() < new Date().setHours(0,0,0,0);
+    const hojeStr = obterDataLocalISO();
+    return c.vencimento < hojeStr;
   });
-  const totalAtrasado = emAtraso.reduce((acc: any, c: any) => acc + c.saldo, 0);
 
   return (
     <div className="p-4 flex flex-col gap-6 animate-in fade-in">
@@ -161,22 +165,22 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
         <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total a Receber</p>
         <p className="text-5xl font-black text-red-600">{fmtMoeda(total)}</p>
         <div className="bg-red-50 text-red-600 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 mt-2">
-          <AlertCircle size={14}/> {fmtMoeda(totalAtrasado)} em atraso
+          <AlertCircle size={14}/> {fmtMoeda(emAtraso.reduce((acc, c) => acc + c.saldo, 0))} em atraso
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div onClick={() => { setTela("clientes"); }} className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 transition-all cursor-pointer">
+        <div onClick={() => setTela("clientes")} className="bg-white rounded-2xl p-4 flex flex-col items-center gap-1 shadow-sm border border-gray-50 active:scale-95 cursor-pointer">
           <Users size={24} className="text-blue-600" />
           <p className="text-xl font-bold">{clientes.length}</p>
           <p className="text-[10px] text-gray-400 font-bold uppercase">Clientes</p>
         </div>
-        <div onClick={() => { setFiltroCobranca('atrasado'); setTela("cobrancas"); }} className="bg-red-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-red-100 active:scale-95 transition-all cursor-pointer">
+        <div onClick={() => { setFiltroCobranca('atrasado'); setTela("cobrancas"); }} className="bg-red-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-red-100 active:scale-95 cursor-pointer">
           <AlertCircle size={24} className="text-red-600" />
           <p className="text-xl font-bold text-red-600">{emAtraso.length}</p>
           <p className="text-[10px] text-red-400 font-bold uppercase">Em Atraso</p>
         </div>
-        <div onClick={() => { setFiltroCobranca('em_dia'); setTela("cobrancas"); }} className="bg-green-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-green-100 active:scale-95 transition-all cursor-pointer">
+        <div onClick={() => { setFiltroCobranca('em_dia'); setTela("cobrancas"); }} className="bg-green-50 rounded-2xl p-4 flex flex-col items-center gap-1 border border-green-100 active:scale-95 cursor-pointer">
           <CheckCircle size={24} className="text-green-600" />
           <p className="text-xl font-bold text-green-600">{clientes.length - emAtraso.length}</p>
           <p className="text-[10px] text-green-600 font-bold uppercase">Em Dia</p>
@@ -185,17 +189,17 @@ function TelaInicio({ clientes, setTela, abrirCad, setFiltroCobranca }: any) {
 
       <div className="flex flex-col gap-4 mt-2">
         <p className="text-lg font-bold text-gray-800">O que você quer fazer?</p>
-        <button onClick={abrirCad} className="bg-green-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
+        <button onClick={abrirCad} className="bg-green-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95">
           <div className="bg-white/20 p-2 rounded-xl"><UserPlus size={24}/></div>
           <p className="text-lg">Cadastrar Novo Cliente</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
-        <button onClick={() => setTela("clientes")} className="bg-blue-700 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
+        <button onClick={() => setTela("clientes")} className="bg-blue-700 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95">
           <div className="bg-white/20 p-2 rounded-xl"><Users size={24}/></div>
           <p className="text-lg">Ver Clientes</p>
           <ChevronRight className="ml-auto opacity-50" />
         </button>
-        <button onClick={() => { setFiltroCobranca('todos'); setTela("cobrancas"); }} className="bg-orange-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95 transition-all">
+        <button onClick={() => { setFiltroCobranca('todos'); setTela("cobrancas"); }} className="bg-orange-600 text-white p-5 rounded-2xl flex items-center gap-4 font-bold shadow-lg active:scale-95">
           <div className="bg-white/20 p-2 rounded-xl"><Bell size={24}/></div>
           <p className="text-lg">Fazer Cobrança</p>
           <ChevronRight className="ml-auto opacity-50" />
@@ -247,8 +251,8 @@ function TelaClientes({ clientes, onLancar, onEditar, onApagar, abrirCad }: any)
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-1">
-              <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95 transition-all">Venda (+)</button>
-              <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95 transition-all">Pagou ($)</button>
+              <button onClick={() => onLancar(c, 'compra')} className="bg-blue-50 text-blue-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95">Venda (+)</button>
+              <button onClick={() => onLancar(c, 'pagamento')} className="bg-green-50 text-green-700 py-3 rounded-xl font-black text-xs uppercase flex items-center justify-center gap-2 active:scale-95">Pagou ($)</button>
             </div>
           </div>
         );
@@ -284,15 +288,11 @@ export default function App() {
   };
 
   const handleApagar = (cliente: any) => {
-      // MENSAGEM INTELIGENTE DE CONFIRMAÇÃO
       const mensagem = cliente.saldo > 0 
         ? `Atenção! O cliente ${cliente.nome} ainda deve ${fmtMoeda(cliente.saldo)}. Tem certeza que deseja excluir?` 
         : `Tem certeza que deseja apagar o cadastro de ${cliente.nome}?`;
-
-      if(confirm(mensagem)) {
-          setClientes(clientes.filter(c => c.id !== cliente.id));
-      }
-  }
+      if(confirm(mensagem)) setClientes(clientes.filter(c => c.id !== cliente.id));
+  };
 
   const handleMov = (valor: number) => {
     const f = mov.t === 'compra' ? 1 : -1;
@@ -317,21 +317,21 @@ export default function App() {
              <p className="text-xl font-black text-gray-800 mb-2 border-b pb-2">{tituloCobranca}</p>
              {clientes.map(c => {
                  const prazo = calcularStatusPrazo(c.vencimento, c.saldo);
-                 if (filtroCobranca === 'atrasado' && prazo.tipo !== 'atrasado') return null;
-                 if (filtroCobranca === 'em_dia' && prazo.tipo !== 'em_dia') return null;
 
-                 const IconP = prazo.icon;
+                 // CORREÇÃO: "Em Dia" agora mostra quem não está atrasado nem vence hoje
+                 if (filtroCobranca === 'atrasado' && prazo.tipo !== 'atrasado') return null;
+                 if (filtroCobranca === 'em_dia' && prazo.tipo !== 'em_dia' && prazo.tipo !== 'dia') return null;
+
                  const msgZap = gerarMensagemWhatsapp(c, prazo);
-                 const isEmDia = prazo.tipo === 'em_dia';
+                 const isEmDia = prazo.tipo === 'em_dia' || prazo.tipo === 'dia';
 
                  return (
                     <div key={c.id} className={`bg-white p-6 rounded-[32px] border-l-8 shadow-sm flex flex-col gap-4 relative ${isEmDia ? 'border-green-500' : 'border-orange-500'}`}>
                         <div className="absolute top-3 right-5 items-center gap-1 flex">
                             <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase flex items-center gap-1 ${prazo.color}`}>
-                                <IconP size={12}/> {prazo.label}
+                                <prazo.icon size={12}/> {prazo.label}
                             </span>
                         </div>
-
                         <div className="flex justify-between items-end font-black mt-2">
                             <div>
                                 <p className="text-[10px] text-gray-400 font-bold uppercase">Cliente</p>
@@ -339,8 +339,7 @@ export default function App() {
                             </div>
                             <p className="text-2xl text-red-600 leading-none">{fmtMoeda(c.saldo)}</p>
                         </div>
-
-                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(msgZap)}`} target="_blank" rel="noreferrer" className={`text-white p-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md ${isEmDia ? 'bg-green-600' : 'bg-orange-600'}`}>
+                        <a href={`https://wa.me/55${c.telefone.replace(/\D/g, "")}?text=${encodeURIComponent(msgZap)}`} target="_blank" rel="noreferrer" className={`text-white p-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 active:scale-95 shadow-md ${isEmDia ? 'bg-green-600' : 'bg-orange-600'}`}>
                             <MessageCircle size={24}/> {isEmDia ? 'Enviar Elogio' : 'Cobrar WhatsApp'}
                         </a>
                     </div>
